@@ -2,5 +2,6 @@
   "framework": "nextjs",
   "installCommand": "npm install && npm install --prefix web-dashboard",
   "buildCommand": "npm run build",
-  "devCommand": "npm run dev"
+  "devCommand": "npm run dev",
+  "outputDirectory": "web-dashboard/.next"
 }
