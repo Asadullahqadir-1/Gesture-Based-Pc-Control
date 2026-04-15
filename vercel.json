@@ -1,7 +1,6 @@
 {
   "framework": "nextjs",
-  "installCommand": "npm install && npm install --prefix web-dashboard",
-  "buildCommand": "npm run build",
-  "devCommand": "npm run dev",
-  "outputDirectory": "web-dashboard/.next"
+  "installCommand": "if [ -f package.json ] && [ -d web-dashboard ]; then npm install && npm install --prefix web-dashboard; elif [ -f package.json ] && [ -d web-deshboard ]; then npm install && npm install --prefix web-deshboard; else npm install; fi",
+  "buildCommand": "if [ -f web-dashboard/package.json ]; then npm run build --prefix web-dashboard; elif [ -f web-deshboard/package.json ]; then npm run build --prefix web-deshboard; else npm run build; fi",
+  "devCommand": "if [ -f web-dashboard/package.json ]; then npm run dev --prefix web-dashboard; elif [ -f web-deshboard/package.json ]; then npm run dev --prefix web-deshboard; else npm run dev; fi"
 }
