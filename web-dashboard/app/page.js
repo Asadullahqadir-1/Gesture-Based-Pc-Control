@@ -4,6 +4,40 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { FilesetResolver, HandLandmarker } from "@mediapipe/tasks-vision";
 
 const DEFAULT_GESTURE = "No hand";
+const HAND_CONNECTIONS = [
+  [0, 1], [1, 2], [2, 3], [3, 4],
+  [0, 5], [5, 6], [6, 7], [7, 8],
+  [5, 9], [9, 10], [10, 11], [11, 12],
+  [9, 13], [13, 14], [14, 15], [15, 16],
+  [13, 17], [17, 18], [18, 19], [19, 20],
+  [0, 17],
+];
+
+const LANDMARK_NAMES = [
+  "Wrist",
+  "Thumb CMC",
+  "Thumb MCP",
+  "Thumb IP",
+  "Thumb Tip",
+  "Index MCP",
+  "Index PIP",
+  "Index DIP",
+  "Index Tip",
+  "Middle MCP",
+  "Middle PIP",
+  "Middle DIP",
+  "Middle Tip",
+  "Ring MCP",
+  "Ring PIP",
+  "Ring DIP",
+  "Ring Tip",
+  "Pinky MCP",
+  "Pinky PIP",
+  "Pinky DIP",
+  "Pinky Tip",
+];
+
+const TIP_INDICES = [4, 8, 12, 16, 20];
 
 function classifyGesture(landmarks) {
   if (!landmarks || landmarks.length !== 21) {
@@ -33,21 +67,158 @@ function classifyGesture(landmarks) {
   return "None";
 }
 
-function drawLandmarks(ctx, landmarks, width, height) {
-  ctx.clearRect(0, 0, width, height);
-  if (!landmarks?.length) return;
+function distance2D(a, b) {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  return Math.sqrt(dx * dx + dy * dy);
+}
 
-  ctx.strokeStyle = "#3ef8b2";
-  ctx.fillStyle = "#3ef8b2";
-  ctx.lineWidth = 2;
+function distance3D(a, b) {
+  const dx = (a.x ?? 0) - (b.x ?? 0);
+  const dy = (a.y ?? 0) - (b.y ?? 0);
+  const dz = (a.z ?? 0) - (b.z ?? 0);
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
 
-  for (const lm of landmarks) {
-    const x = lm.x * width;
-    const y = lm.y * height;
+function formatDistance(value, isWorld = false) {
+  if (!Number.isFinite(value)) return "n/a";
+  return isWorld ? `${value.toFixed(3)}m` : `${value.toFixed(1)}px`;
+}
+
+function drawLabel(ctx, text, x, y, bg = "rgba(18, 34, 28, 0.78)", fg = "#f3fff7") {
+  ctx.save();
+  ctx.font = "11px Segoe UI";
+  const paddingX = 6;
+  const paddingY = 4;
+  const metrics = ctx.measureText(text);
+  const w = metrics.width + paddingX * 2;
+  const h = 18;
+  ctx.fillStyle = bg;
+  ctx.beginPath();
+  ctx.roundRect(x, y - h, w, h, 6);
+  ctx.fill();
+  ctx.fillStyle = fg;
+  ctx.fillText(text, x + paddingX, y - 5);
+  ctx.restore();
+}
+
+function drawHandOverlay(ctx, handLandmarks, worldLandmarks, width, height, handIndex, handednessLabel, handednessScore) {
+  if (!handLandmarks?.length) return;
+
+  const palette = ["#2be5a7", "#f6c15b", "#7ad7ff", "#ff8a7a"];
+  const color = palette[handIndex % palette.length];
+
+  const points = handLandmarks.map((lm) => ({
+    x: lm.x * width,
+    y: lm.y * height,
+    z: lm.z,
+  }));
+
+  let minX = width;
+  let minY = height;
+  let maxX = 0;
+  let maxY = 0;
+
+  ctx.save();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+
+  for (const [startIdx, endIdx] of HAND_CONNECTIONS) {
+    const start = points[startIdx];
+    const end = points[endIdx];
+    if (!start || !end) continue;
     ctx.beginPath();
-    ctx.arc(x, y, 3, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.moveTo(start.x, start.y);
+    ctx.lineTo(end.x, end.y);
+    ctx.stroke();
   }
+
+  for (let i = 0; i < points.length; i += 1) {
+    const pt = points[i];
+    minX = Math.min(minX, pt.x);
+    minY = Math.min(minY, pt.y);
+    maxX = Math.max(maxX, pt.x);
+    maxY = Math.max(maxY, pt.y);
+
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(15, 25, 21, 0.55)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    if ([0, 4, 8, 12, 16, 20].includes(i)) {
+      const label = `${i}: ${LANDMARK_NAMES[i]}`;
+      drawLabel(ctx, label, pt.x + 8, pt.y - 8, "rgba(8, 24, 19, 0.86)");
+    }
+  }
+
+  const wrist = points[0];
+  const worldWrist = worldLandmarks?.[0] ?? null;
+  const worldDistances = TIP_INDICES.map((tipIdx) => {
+    const tipWorld = worldLandmarks?.[tipIdx];
+    const tipPoint = points[tipIdx];
+    return {
+      name: LANDMARK_NAMES[tipIdx],
+      px: distance2D(wrist, tipPoint),
+      world: worldWrist && tipWorld ? distance3D(worldWrist, tipWorld) : null,
+    };
+  });
+
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(minX - 14, minY - 34, maxX - minX + 28, maxY - minY + 48);
+
+  const titleLines = [
+    `${handednessLabel || "Unknown"} hand`,
+    `Score ${(handednessScore * 100 || 0).toFixed(0)}%`,
+    `Tip distances: ${worldDistances
+      .map((item) => `${item.name.split(" ")[0]} ${formatDistance(item.world ?? item.px, Boolean(item.world))}`)
+      .join(" | ")}`,
+  ];
+
+  const boxWidth = Math.min(width - 20, 430);
+  const boxHeight = 66;
+  const boxX = Math.max(10, minX - 10);
+  const boxY = Math.max(42, minY - 44);
+  ctx.fillStyle = "rgba(8, 24, 19, 0.78)";
+  ctx.beginPath();
+  ctx.roundRect(boxX, boxY - boxHeight + 10, boxWidth, boxHeight, 12);
+  ctx.fill();
+
+  ctx.fillStyle = "#effef4";
+  ctx.font = "12px Segoe UI";
+  ctx.fillText(titleLines[0], boxX + 12, boxY - 28);
+  ctx.fillText(titleLines[1], boxX + 12, boxY - 12);
+  ctx.fillText(titleLines[2], boxX + 12, boxY + 4);
+
+  ctx.restore();
+}
+
+function drawLandmarks(ctx, result, width, height) {
+  ctx.clearRect(0, 0, width, height);
+  if (!result?.landmarks?.length) return;
+
+  const hands = result.landmarks;
+  const worldHands = result.worldLandmarks ?? [];
+  const handednessList = result.handedness ?? [];
+
+  hands.forEach((handLandmarks, index) => {
+    const handednessItem = handednessList[index]?.[0];
+    const handednessLabel = handednessItem?.categoryName || handednessItem?.displayName || `Hand ${index + 1}`;
+    const handednessScore = handednessItem?.score ?? 0;
+    drawHandOverlay(
+      ctx,
+      handLandmarks,
+      worldHands[index] ?? null,
+      width,
+      height,
+      index,
+      handednessLabel,
+      handednessScore,
+    );
+  });
 }
 
 export default function Page() {
@@ -157,7 +328,7 @@ export default function Page() {
     const ctx = canvas.getContext("2d");
 
     if (ctx) {
-      drawLandmarks(ctx, landmarks, canvas.width, canvas.height);
+      drawLandmarks(ctx, result, canvas.width, canvas.height);
     }
 
     const nextGesture = classifyGesture(landmarks);
