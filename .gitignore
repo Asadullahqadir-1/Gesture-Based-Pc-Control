@@ -164,3 +164,6 @@ guide.toc
 # Web dashboard artifacts
 web-dashboard/node_modules/
 web-dashboard/.next/
+
+# Root Node.js artifacts
+node_modules/
