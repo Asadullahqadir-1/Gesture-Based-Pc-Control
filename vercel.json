@@ -1,6 +1,0 @@
-{
-  "installCommand": "npm install --prefix web-dashboard",
-  "buildCommand": "npm run build --prefix web-dashboard",
-  "devCommand": "npm run dev --prefix web-dashboard",
-  "outputDirectory": "web-dashboard/.next"
-}
