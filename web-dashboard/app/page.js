@@ -85,6 +85,21 @@ function formatDistance(value, isWorld = false) {
   return isWorld ? `${value.toFixed(3)}m` : `${value.toFixed(1)}px`;
 }
 
+function drawRoundedRectPath(ctx, x, y, width, height, radius) {
+  const r = Math.min(radius, width / 2, height / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + width - r, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+  ctx.lineTo(x + width, y + height - r);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+  ctx.lineTo(x + r, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
 function drawLabel(ctx, text, x, y, bg = "rgba(18, 34, 28, 0.78)", fg = "#f3fff7") {
   ctx.save();
   ctx.font = "11px Segoe UI";
@@ -94,8 +109,7 @@ function drawLabel(ctx, text, x, y, bg = "rgba(18, 34, 28, 0.78)", fg = "#f3fff7
   const w = metrics.width + paddingX * 2;
   const h = 18;
   ctx.fillStyle = bg;
-  ctx.beginPath();
-  ctx.roundRect(x, y - h, w, h, 6);
+  drawRoundedRectPath(ctx, x, y - h, w, h, 6);
   ctx.fill();
   ctx.fillStyle = fg;
   ctx.fillText(text, x + paddingX, y - 5);
@@ -183,8 +197,7 @@ function drawHandOverlay(ctx, handLandmarks, worldLandmarks, width, height, hand
   const boxX = Math.max(10, minX - 10);
   const boxY = Math.max(42, minY - 44);
   ctx.fillStyle = "rgba(8, 24, 19, 0.78)";
-  ctx.beginPath();
-  ctx.roundRect(boxX, boxY - boxHeight + 10, boxWidth, boxHeight, 12);
+  drawRoundedRectPath(ctx, boxX, boxY - boxHeight + 10, boxWidth, boxHeight, 12);
   ctx.fill();
 
   ctx.fillStyle = "#effef4";
