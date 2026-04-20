@@ -403,7 +403,6 @@ export default function Page() {
     <main className="page">
       <aside className="sidebar">
         <h1>DriveFlow Web</h1>
-        <p>Vercel-ready AI driving dashboard</p>
         <div className="chip">{running ? "APP RUNNING" : "APP STOPPED"}</div>
       </aside>
 
