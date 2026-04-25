@@ -42,7 +42,6 @@ class CameraModule:
         if not ok:
             return None
 
-        frame = cv2.flip(frame, 1)
         return frame
 
     def release_camera(self) -> None:
