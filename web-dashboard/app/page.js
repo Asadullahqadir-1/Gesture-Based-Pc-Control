@@ -123,7 +123,7 @@ function drawHandOverlay(ctx, handLandmarks, worldLandmarks, width, height, hand
   const color = palette[handIndex % palette.length];
 
   const points = handLandmarks.map((lm) => ({
-    x: lm.x * width,
+    x: width - lm.x * width,
     y: lm.y * height,
     z: lm.z,
   }));
@@ -435,7 +435,7 @@ export default function Page() {
         <div className="grid main-grid">
           <article className="card video-card">
             <div className="video-wrap">
-              <video ref={videoRef} playsInline muted />
+              <video ref={videoRef} playsInline muted className="mirror-feed" />
               <canvas ref={overlayRef} />
             </div>
           </article>

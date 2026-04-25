@@ -152,6 +152,10 @@ body {
   object-fit: cover;
 }
 
+.video-wrap video.mirror-feed {
+  transform: scaleX(-1);
+}
+
 .control-card h3 {
   margin: 0;
 }
