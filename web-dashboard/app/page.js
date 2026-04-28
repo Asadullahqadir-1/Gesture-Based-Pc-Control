@@ -403,7 +403,7 @@ export default function Page() {
   return (
     <main className="page">
       <aside className="sidebar">
-        <h1>DriveFlow Web</h1>
+        <h1>DriveFlow</h1>
         <div className="chip">{running ? "APP RUNNING" : "APP STOPPED"}</div>
       </aside>
 
