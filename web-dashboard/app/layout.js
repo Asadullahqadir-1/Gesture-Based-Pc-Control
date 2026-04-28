@@ -1,7 +1,7 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "AI Driving - Web Dashboard",
+  title: "DriveFlow",
   description: "Web-based gesture dashboard ready for Vercel deployment",
 };
 
