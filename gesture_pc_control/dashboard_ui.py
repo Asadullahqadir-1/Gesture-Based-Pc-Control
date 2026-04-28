@@ -122,12 +122,14 @@ class DashboardUI:
         self.gesture_var = tk.StringVar(value="Gesture: None")
         self.fps_var = tk.StringVar(value="FPS: 0.00")
         self.hands_var = tk.StringVar(value="Hands: 0")
+        self.distance_var = tk.StringVar(value="Distance: n/a")
         self.controls_var = tk.StringVar(value="Controls: OFF (Press C)")
         self.action_var = tk.StringVar(value="Action: No action")
 
         ttk.Label(info_row, textvariable=self.gesture_var, font=("Segoe UI", 12, "bold")).pack(side=tk.LEFT, padx=(0, 20))
         ttk.Label(info_row, textvariable=self.fps_var, font=("Segoe UI", 11)).pack(side=tk.LEFT, padx=(0, 20))
-        ttk.Label(info_row, textvariable=self.hands_var, font=("Segoe UI", 11)).pack(side=tk.LEFT)
+        ttk.Label(info_row, textvariable=self.hands_var, font=("Segoe UI", 11)).pack(side=tk.LEFT, padx=(0, 20))
+        ttk.Label(info_row, textvariable=self.distance_var, font=("Segoe UI", 11)).pack(side=tk.LEFT)
 
         status_row = ttk.Frame(self.dashboard_frame)
         status_row.pack(fill=tk.X, pady=(8, 0))
@@ -247,6 +249,7 @@ class DashboardUI:
 
         gesture_text = payload.get("gesture", "None")
         landmarks: List[Dict[str, Any]] = payload.get("landmarks", [])
+        distance_ft = payload.get("distance_ft")
         controls_enabled = bool(payload.get("controls_enabled", False))
         action_text = payload.get("action", "No action")
         landmark_debug = payload.get("landmark_debug", "No landmarks detected")
@@ -254,6 +257,9 @@ class DashboardUI:
         self.gesture_var.set(f"Gesture: {gesture_text}")
         self.fps_var.set(f"FPS: {self._fps:.2f}")
         self.hands_var.set(f"Hands: {len(landmarks)}")
+        self.distance_var.set(
+            f"Distance: {distance_ft:.2f} ft" if isinstance(distance_ft, (int, float)) else "Distance: n/a"
+        )
         self._controls_enabled = controls_enabled
         self.controls_var.set(f"Controls: {'ON' if controls_enabled else 'OFF'} (Press C)")
         self.action_var.set(f"Action: {action_text}")
