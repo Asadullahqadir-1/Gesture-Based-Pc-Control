@@ -120,13 +120,20 @@ class DashboardUI:
         info_row.pack(fill=tk.X, pady=(12, 0))
 
         self.gesture_var = tk.StringVar(value="Gesture: None")
+        self.raw_gesture_var = tk.StringVar(value="Raw: None")
+        self.confidence_var = tk.StringVar(value="Confidence: 0.00")
         self.fps_var = tk.StringVar(value="FPS: 0.00")
         self.hands_var = tk.StringVar(value="Hands: 0")
         self.distance_var = tk.StringVar(value="Distance: n/a")
         self.controls_var = tk.StringVar(value="Controls: OFF (Press C)")
         self.action_var = tk.StringVar(value="Action: No action")
+        self.latency_var = tk.StringVar(value="Latency: 0.0ms")
+        self.optimization_var = tk.StringVar(value="Consensus: 0.00 | Jitter: 0.00")
+        self.features_var = tk.StringVar(value="Features: 0")
 
         ttk.Label(info_row, textvariable=self.gesture_var, font=("Segoe UI", 12, "bold")).pack(side=tk.LEFT, padx=(0, 20))
+        ttk.Label(info_row, textvariable=self.raw_gesture_var, font=("Segoe UI", 11)).pack(side=tk.LEFT, padx=(0, 20))
+        ttk.Label(info_row, textvariable=self.confidence_var, font=("Segoe UI", 11)).pack(side=tk.LEFT, padx=(0, 20))
         ttk.Label(info_row, textvariable=self.fps_var, font=("Segoe UI", 11)).pack(side=tk.LEFT, padx=(0, 20))
         ttk.Label(info_row, textvariable=self.hands_var, font=("Segoe UI", 11)).pack(side=tk.LEFT, padx=(0, 20))
         ttk.Label(info_row, textvariable=self.distance_var, font=("Segoe UI", 11)).pack(side=tk.LEFT)
@@ -135,6 +142,12 @@ class DashboardUI:
         status_row.pack(fill=tk.X, pady=(8, 0))
         ttk.Label(status_row, textvariable=self.controls_var, font=("Segoe UI", 11, "bold")).pack(side=tk.LEFT, padx=(0, 20))
         ttk.Label(status_row, textvariable=self.action_var, font=("Segoe UI", 11)).pack(side=tk.LEFT)
+
+        perf_row = ttk.Frame(self.dashboard_frame)
+        perf_row.pack(fill=tk.X, pady=(6, 0))
+        ttk.Label(perf_row, textvariable=self.features_var, font=("Segoe UI", 10)).pack(side=tk.LEFT, padx=(0, 20))
+        ttk.Label(perf_row, textvariable=self.latency_var, font=("Segoe UI", 10)).pack(side=tk.LEFT, padx=(0, 20))
+        ttk.Label(perf_row, textvariable=self.optimization_var, font=("Segoe UI", 10)).pack(side=tk.LEFT)
 
         ttk.Label(self.dashboard_frame, text="Landmark Debug", font=("Segoe UI", 10, "bold")).pack(anchor=tk.W, pady=(8, 0))
         self.landmark_text = tk.Text(self.dashboard_frame, height=4, wrap="word", font=("Consolas", 9))
@@ -248,13 +261,21 @@ class DashboardUI:
         self._last_time = now
 
         gesture_text = payload.get("gesture", "None")
+        raw_gesture_text = payload.get("raw_gesture", "None")
+        confidence = float(payload.get("gesture_confidence", 0.0))
         landmarks: List[Dict[str, Any]] = payload.get("landmarks", [])
         distance_ft = payload.get("distance_ft")
         controls_enabled = bool(payload.get("controls_enabled", False))
         action_text = payload.get("action", "No action")
         landmark_debug = payload.get("landmark_debug", "No landmarks detected")
+        consensus_ratio = float(payload.get("consensus_ratio", 0.0))
+        jitter_index = float(payload.get("jitter_index", 0.0))
+        latency_ms = float(payload.get("pipeline_latency_ms", 0.0))
+        feature_dim = int(payload.get("feature_dim", 0))
 
         self.gesture_var.set(f"Gesture: {gesture_text}")
+        self.raw_gesture_var.set(f"Raw: {raw_gesture_text}")
+        self.confidence_var.set(f"Confidence: {confidence:.2f}")
         self.fps_var.set(f"FPS: {self._fps:.2f}")
         self.hands_var.set(f"Hands: {len(landmarks)}")
         self.distance_var.set(
@@ -263,6 +284,9 @@ class DashboardUI:
         self._controls_enabled = controls_enabled
         self.controls_var.set(f"Controls: {'ON' if controls_enabled else 'OFF'} (Press C)")
         self.action_var.set(f"Action: {action_text}")
+        self.features_var.set(f"Features: {feature_dim}")
+        self.latency_var.set(f"Latency: {latency_ms:.1f}ms")
+        self.optimization_var.set(f"Consensus: {consensus_ratio:.2f} | Jitter: {jitter_index:.2f}")
 
         self.landmark_text.configure(state=tk.NORMAL)
         self.landmark_text.delete("1.0", tk.END)

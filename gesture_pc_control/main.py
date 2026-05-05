@@ -1,12 +1,16 @@
 import os
 import math
+import time
+import json
 from typing import Any, Dict, Optional
 
 import cv2
 
 from camera_module import CameraModule
 from dashboard_ui import DashboardUI
+from feature_engineering import FeatureEngineer
 from gesture_classifier import GestureClassifier
+from gesture_smoothing import GestureSmoother
 from hand_detector import HandDetector
 from landmark_extractor import LandmarkExtractor
 from pc_controller import PCController
@@ -17,6 +21,53 @@ class GesturePCControlApp:
 
     _ASSUMED_PALM_WIDTH_FT = 0.27
     _ASSUMED_CAMERA_HFOV_DEG = 60.0
+    _DEFAULT_MODEL_PATH = "model/keypoint_classifier/gesture_rf_model.pkl"
+    _SMOOTH_PRESETS: Dict[str, Dict[str, float | int]] = {
+        "aggressive": {
+            "window_size": 4,
+            "min_confidence": 0.48,
+            "min_consensus": 0.52,
+            "hold_frames": 1,
+            "switch_cooldown_frames": 0,
+        },
+        "fast": {
+            "window_size": 5,
+            "min_confidence": 0.50,
+            "min_consensus": 0.55,
+            "hold_frames": 1,
+            "switch_cooldown_frames": 0,
+        },
+        "balanced": {
+            "window_size": 7,
+            "min_confidence": 0.55,
+            "min_consensus": 0.60,
+            "hold_frames": 2,
+            "switch_cooldown_frames": 1,
+        },
+        "stable": {
+            "window_size": 9,
+            "min_confidence": 0.62,
+            "min_consensus": 0.68,
+            "hold_frames": 3,
+            "switch_cooldown_frames": 2,
+        },
+        "ultra_stable": {
+            "window_size": 11,
+            "min_confidence": 0.68,
+            "min_consensus": 0.74,
+            "hold_frames": 4,
+            "switch_cooldown_frames": 3,
+        },
+    }
+
+    _DEFAULT_GESTURE_THRESHOLDS: Dict[str, Dict[str, float | int]] = {
+        "Point": {"min_confidence": 0.58, "min_consensus": 0.62, "hold_frames": 2},
+        "Point Left": {"min_confidence": 0.62, "min_consensus": 0.65, "hold_frames": 2},
+        "Point Right": {"min_confidence": 0.62, "min_consensus": 0.65, "hold_frames": 2},
+        "Two Finger": {"min_confidence": 0.65, "min_consensus": 0.68, "hold_frames": 2},
+        "Open Palm": {"min_confidence": 0.52, "min_consensus": 0.58, "hold_frames": 1},
+        "Fist": {"min_confidence": 0.54, "min_consensus": 0.60, "hold_frames": 1},
+    }
 
     def __init__(self) -> None:
         auto_start_permissions = None
@@ -32,7 +83,40 @@ class GesturePCControlApp:
             min_tracking_confidence=0.5,
         )
         self.extractor = LandmarkExtractor()
-        self.classifier = GestureClassifier()
+        self.feature_engineer = FeatureEngineer()
+
+        model_path = os.getenv("GESTURE_MODEL_PATH", self._DEFAULT_MODEL_PATH)
+        self.classifier = GestureClassifier(model_path=model_path)
+
+        smooth_profile = os.getenv("GESTURE_SMOOTH_PROFILE", "fast").lower()
+        preset = self._SMOOTH_PRESETS.get(smooth_profile, self._SMOOTH_PRESETS["fast"])
+
+        smooth_window = int(os.getenv("GESTURE_SMOOTH_WINDOW", str(preset["window_size"])))
+        smooth_min_conf = float(os.getenv("GESTURE_MIN_CONFIDENCE", str(preset["min_confidence"])))
+        smooth_min_consensus = float(os.getenv("GESTURE_MIN_CONSENSUS", str(preset["min_consensus"])))
+        smooth_hold_frames = int(os.getenv("GESTURE_HOLD_FRAMES", str(preset["hold_frames"])))
+        smooth_cooldown = int(os.getenv("GESTURE_SWITCH_COOLDOWN", str(preset["switch_cooldown_frames"])))
+
+        gesture_thresholds = dict(self._DEFAULT_GESTURE_THRESHOLDS)
+        thresholds_env = os.getenv("GESTURE_GESTURE_THRESHOLDS", "").strip()
+        if thresholds_env:
+            try:
+                parsed_thresholds = json.loads(thresholds_env)
+                if isinstance(parsed_thresholds, dict):
+                    for gesture_name, overrides in parsed_thresholds.items():
+                        if isinstance(overrides, dict):
+                            gesture_thresholds[str(gesture_name)] = overrides
+            except Exception:
+                pass
+
+        self.smoother = GestureSmoother(
+            window_size=smooth_window,
+            min_confidence=smooth_min_conf,
+            min_consensus=smooth_min_consensus,
+            hold_frames=smooth_hold_frames,
+            switch_cooldown_frames=smooth_cooldown,
+            gesture_thresholds=gesture_thresholds,
+        )
         self.controller = PCController(min_action_interval_sec=0.45)
         self.ui = DashboardUI(
             width=960,
@@ -58,7 +142,13 @@ class GesturePCControlApp:
         self.ui.set_frame_provider(self._process_next_frame)
         return True
 
-    def _build_landmark_debug(self, landmarks_payload: list[dict[str, Any]]) -> str:
+    def _build_landmark_debug(
+        self,
+        landmarks_payload: list[dict[str, Any]],
+        features_payload: Optional[Dict[str, Any]],
+        classify_payload: Dict[str, Any],
+        smooth_payload: Dict[str, Any],
+    ) -> str:
         if not landmarks_payload:
             return "No landmarks detected"
 
@@ -69,7 +159,19 @@ class GesturePCControlApp:
         points = hand.get("landmarks", [])[:5]
         coords = [f"({p['x']:.3f}, {p['y']:.3f}, {p['z']:.3f})" for p in points]
         distance_text = f", approx {distance_ft:.2f} ft" if isinstance(distance_ft, (int, float)) else ""
-        return f"{label} ({score:.2f}{distance_text}) first-5: " + ", ".join(coords)
+        feature_dim = features_payload.get("feature_dim") if features_payload else 0
+        raw_gesture = classify_payload.get("gesture", "None")
+        raw_conf = float(classify_payload.get("confidence", 0.0))
+        source = classify_payload.get("source", "rule")
+        stable_gesture = smooth_payload.get("stable_gesture", "None")
+        consensus = float(smooth_payload.get("consensus_ratio", 0.0))
+
+        base = f"{label} ({score:.2f}{distance_text}) first-5: " + ", ".join(coords)
+        module_line = (
+            f"\nFeatures: {feature_dim} dims | Raw: {raw_gesture} ({raw_conf:.2f}, {source}) "
+            f"| Stable: {stable_gesture} | Consensus: {consensus:.2f}"
+        )
+        return base + module_line
 
     def _estimate_distance_ft(self, landmarks: list[dict[str, Any]], frame_width: int) -> Optional[float]:
         if len(landmarks) < 18 or frame_width <= 0:
@@ -118,31 +220,55 @@ class GesturePCControlApp:
         return primary_distance_ft
 
     def _process_next_frame(self) -> Optional[Dict[str, Any]]:
+        start = time.perf_counter()
         frame = self.camera.get_frame()
         if frame is None:
             return {
                 "frame": None,
                 "gesture": "None",
+                "raw_gesture": "None",
+                "gesture_confidence": 0.0,
                 "landmarks": [],
                 "distance_ft": None,
+                "feature_dim": 0,
             }
 
         processed_frame, results = self.detector.process_frame(frame)
         h, w = processed_frame.shape[:2]
         landmarks_payload = self.extractor.extract(results, frame_width=w, frame_height=h)
         primary_distance_ft = self._annotate_hand_distances(processed_frame, landmarks_payload)
-        gesture_text = self.classifier.classify(landmarks_payload)
-        self._last_action = self.controller.handle_gesture(gesture_text, landmarks_payload)
-        landmark_debug = self._build_landmark_debug(landmarks_payload)
+        features_payload = self.feature_engineer.extract(landmarks_payload)
+        classify_payload = self.classifier.classify(landmarks_payload, features_payload)
+        smooth_payload = self.smoother.update(
+            str(classify_payload.get("gesture", "None")),
+            float(classify_payload.get("confidence", 0.0)),
+        )
+
+        stable_gesture = str(smooth_payload.get("stable_gesture", "None"))
+        self._last_action = self.controller.handle_gesture(stable_gesture, landmarks_payload)
+        landmark_debug = self._build_landmark_debug(
+            landmarks_payload,
+            features_payload,
+            classify_payload,
+            smooth_payload,
+        )
+        latency_ms = (time.perf_counter() - start) * 1000.0
 
         return {
             "frame": processed_frame,
-            "gesture": gesture_text,
+            "gesture": stable_gesture,
+            "raw_gesture": str(classify_payload.get("gesture", "None")),
+            "gesture_confidence": float(classify_payload.get("confidence", 0.0)),
+            "classification_source": str(classify_payload.get("source", "rule")),
+            "consensus_ratio": float(smooth_payload.get("consensus_ratio", 0.0)),
+            "jitter_index": float(smooth_payload.get("jitter_index", 0.0)),
             "landmarks": landmarks_payload,
             "distance_ft": primary_distance_ft,
             "controls_enabled": self.controller.enabled,
             "action": self._last_action,
             "landmark_debug": landmark_debug,
+            "feature_dim": int(features_payload.get("feature_dim", 0)) if features_payload else 0,
+            "pipeline_latency_ms": latency_ms,
         }
 
     def run(self) -> None:
