@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { FilesetResolver, HandLandmarker } from "@mediapipe/tasks-vision";
 
 const DEFAULT_GESTURE = "No hand";
+const MODULE_BUILD = "modules v2-web";
+const SMOOTH_PROFILE = "fast";
 const HAND_CONNECTIONS = [
   [0, 1], [1, 2], [2, 3], [3, 4],
   [0, 5], [5, 6], [6, 7], [7, 8],
@@ -65,6 +67,221 @@ function classifyGesture(landmarks) {
     return "Point";
   }
   return "None";
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function distanceXY(a, b) {
+  const dx = (a.x ?? 0) - (b.x ?? 0);
+  const dy = (a.y ?? 0) - (b.y ?? 0);
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function extractFeatureVector(landmarks) {
+  if (!landmarks || landmarks.length !== 21) {
+    return null;
+  }
+
+  const wrist = landmarks[0];
+  const palmWidth = Math.max(distanceXY(landmarks[5], landmarks[17]), 1e-6);
+
+  const centered = landmarks.map((point) => ({
+    x: (point.x - wrist.x) / palmWidth,
+    y: (point.y - wrist.y) / palmWidth,
+    z: (point.z - wrist.z) / palmWidth,
+  }));
+
+  const xyVector = [];
+  for (const point of centered) {
+    xyVector.push(point.x, point.y);
+  }
+
+  const distances = [
+    distanceXY(landmarks[0], landmarks[4]) / palmWidth,
+    distanceXY(landmarks[0], landmarks[8]) / palmWidth,
+    distanceXY(landmarks[0], landmarks[12]) / palmWidth,
+    distanceXY(landmarks[0], landmarks[16]) / palmWidth,
+    distanceXY(landmarks[0], landmarks[20]) / palmWidth,
+    distanceXY(landmarks[4], landmarks[8]) / palmWidth,
+    distanceXY(landmarks[8], landmarks[12]) / palmWidth,
+    distanceXY(landmarks[12], landmarks[16]) / palmWidth,
+    distanceXY(landmarks[16], landmarks[20]) / palmWidth,
+  ];
+
+  return {
+    vector: [...xyVector, ...distances],
+    palmWidth,
+    featureDim: xyVector.length + distances.length,
+    fingertipSpread: distances.slice(0, 5).reduce((sum, value) => sum + value, 0) / 5,
+  };
+}
+
+function classifyWithFeatureEngineering(landmarks, handednessLabel = "") {
+  if (!landmarks || landmarks.length !== 21) {
+    return {
+      gesture: DEFAULT_GESTURE,
+      confidence: 0,
+      source: "feature-engineering",
+      featureDim: 0,
+    };
+  }
+
+  const features = extractFeatureVector(landmarks);
+  if (!features) {
+    return {
+      gesture: DEFAULT_GESTURE,
+      confidence: 0,
+      source: "feature-engineering",
+      featureDim: 0,
+    };
+  }
+
+  const baseGesture = classifyGesture(landmarks);
+  const fingersUp = [8, 12, 16, 20].map((tipId, index) => {
+    const pipId = [6, 10, 14, 18][index];
+    return landmarks[tipId].y < landmarks[pipId].y;
+  });
+
+  const countUp = fingersUp.filter(Boolean).length;
+  const handedness = handednessLabel.toLowerCase();
+  const thumbTipX = landmarks[4].x;
+  const thumbIpX = landmarks[3].x;
+  const thumbUp = handedness.includes("right") ? thumbTipX > thumbIpX : thumbTipX < thumbIpX;
+
+  let confidence = 0.45;
+  if (baseGesture === "Open Palm") {
+    confidence = clamp(0.62 + (features.fingertipSpread - 1.0) * 0.2, 0.55, 0.96);
+  } else if (baseGesture === "Fist") {
+    confidence = clamp(0.90 - features.fingertipSpread * 0.18, 0.55, 0.95);
+  } else if (baseGesture === "Two Finger") {
+    confidence = clamp(0.68 + countUp * 0.04, 0.55, 0.92);
+  } else if (baseGesture === "Point" || baseGesture === "Point Left" || baseGesture === "Point Right") {
+    confidence = clamp(0.66 + (landmarks[6].y - landmarks[8].y) * 0.35, 0.55, 0.92);
+  } else if (thumbUp) {
+    confidence = 0.62;
+  } else if (baseGesture === "None") {
+    confidence = clamp(0.30 + countUp * 0.06, 0.2, 0.52);
+  }
+
+  return {
+    gesture: baseGesture,
+    confidence,
+    source: "feature-engineering",
+    featureDim: features.featureDim,
+  };
+}
+
+function createSmoothingState() {
+  return {
+    history: [],
+    stableGesture: DEFAULT_GESTURE,
+    pendingGesture: DEFAULT_GESTURE,
+    pendingCount: 0,
+    cooldown: 0,
+  };
+}
+
+function getSmoothingPreset(profile) {
+  if (profile === "balanced") {
+    return { windowSize: 7, minConfidence: 0.55, minConsensus: 0.6, holdFrames: 2, cooldown: 1 };
+  }
+  if (profile === "stable") {
+    return { windowSize: 9, minConfidence: 0.62, minConsensus: 0.68, holdFrames: 3, cooldown: 2 };
+  }
+  return { windowSize: 5, minConfidence: 0.5, minConsensus: 0.55, holdFrames: 1, cooldown: 0 };
+}
+
+function getGestureThresholds(gesture, basePreset) {
+  const overrides = {
+    "Point": { minConfidence: 0.58, minConsensus: 0.62, holdFrames: 2 },
+    "Point Left": { minConfidence: 0.62, minConsensus: 0.66, holdFrames: 2 },
+    "Point Right": { minConfidence: 0.62, minConsensus: 0.66, holdFrames: 2 },
+    "Two Finger": { minConfidence: 0.65, minConsensus: 0.68, holdFrames: 2 },
+    "Open Palm": { minConfidence: 0.5, minConsensus: 0.56, holdFrames: 1 },
+    "Fist": { minConfidence: 0.52, minConsensus: 0.58, holdFrames: 1 },
+  };
+
+  const custom = overrides[gesture] || {};
+  return {
+    minConfidence: custom.minConfidence ?? basePreset.minConfidence,
+    minConsensus: custom.minConsensus ?? basePreset.minConsensus,
+    holdFrames: custom.holdFrames ?? basePreset.holdFrames,
+  };
+}
+
+function smoothGesture(state, rawGesture, rawConfidence, profile = "fast") {
+  const preset = getSmoothingPreset(profile);
+  const thresholds = getGestureThresholds(rawGesture, preset);
+  const filteredGesture = rawConfidence >= thresholds.minConfidence ? rawGesture : DEFAULT_GESTURE;
+  const filteredConfidence = rawConfidence >= thresholds.minConfidence ? rawConfidence : 0;
+
+  state.history.push({ gesture: filteredGesture, confidence: filteredConfidence });
+  if (state.history.length > preset.windowSize) {
+    state.history.shift();
+  }
+
+  const weightedVotes = new Map();
+  let total = 0;
+  const size = state.history.length;
+
+  state.history.forEach((item, index) => {
+    const recencyWeight = 1 + (index / Math.max(1, size - 1)) * 0.5;
+    const vote = Math.max(item.confidence, 0.01) * recencyWeight;
+    weightedVotes.set(item.gesture, (weightedVotes.get(item.gesture) || 0) + vote);
+    total += vote;
+  });
+
+  let candidate = state.stableGesture;
+  let consensus = 0;
+  if (total > 0 && weightedVotes.size > 0) {
+    const sorted = [...weightedVotes.entries()].sort((a, b) => b[1] - a[1]);
+    candidate = sorted[0][0];
+    consensus = sorted[0][1] / total;
+  }
+
+  const candidateThresholds = getGestureThresholds(candidate, preset);
+  const requiredConsensus = Math.max(thresholds.minConsensus, candidateThresholds.minConsensus);
+  const requiredHold = Math.max(thresholds.holdFrames, candidateThresholds.holdFrames);
+
+  if (consensus < requiredConsensus) {
+    candidate = state.stableGesture;
+  }
+
+  let changed = false;
+  if (candidate === state.stableGesture) {
+    state.pendingGesture = candidate;
+    state.pendingCount = 0;
+    if (state.cooldown > 0) state.cooldown -= 1;
+  } else if (state.cooldown > 0) {
+    state.cooldown -= 1;
+  } else if (candidate !== state.pendingGesture) {
+    state.pendingGesture = candidate;
+    state.pendingCount = 1;
+  } else {
+    state.pendingCount += 1;
+    if (state.pendingCount >= requiredHold) {
+      state.stableGesture = candidate;
+      state.pendingCount = 0;
+      state.cooldown = preset.cooldown;
+      changed = true;
+    }
+  }
+
+  const uniqueGestures = new Set(state.history.map((item) => item.gesture));
+  const jitter = state.history.length > 0 ? uniqueGestures.size / state.history.length : 0;
+
+  return {
+    stableGesture: state.stableGesture,
+    filteredGesture,
+    consensus,
+    jitter,
+    changed,
+    minConfidence: thresholds.minConfidence,
+    minConsensus: requiredConsensus,
+    holdFrames: requiredHold,
+  };
 }
 
 function distance2D(a, b) {
@@ -241,6 +458,7 @@ export default function Page() {
   const streamRef = useRef(null);
   const handLandmarkerRef = useRef(null);
   const lastFrameTimeRef = useRef(0);
+  const smoothingRef = useRef(createSmoothingState());
 
   const [running, setRunning] = useState(false);
   const [permissionOpen, setPermissionOpen] = useState(false);
@@ -248,6 +466,12 @@ export default function Page() {
   const [controlsAllowed, setControlsAllowed] = useState(false);
   const [status, setStatus] = useState("Idle");
   const [gesture, setGesture] = useState(DEFAULT_GESTURE);
+  const [rawGesture, setRawGesture] = useState(DEFAULT_GESTURE);
+  const [rawConfidence, setRawConfidence] = useState(0);
+  const [consensusRatio, setConsensusRatio] = useState(0);
+  const [jitterIndex, setJitterIndex] = useState(0);
+  const [featureDim, setFeatureDim] = useState(0);
+  const [classificationSource, setClassificationSource] = useState("feature-engineering");
   const [handsCount, setHandsCount] = useState(0);
   const [fps, setFps] = useState(0);
   const [lastAction, setLastAction] = useState("Waiting");
@@ -338,20 +562,35 @@ export default function Page() {
 
     const result = detector.detectForVideo(video, now);
     const landmarks = result?.landmarks?.[0] ?? null;
+    const handednessLabel = result?.handedness?.[0]?.[0]?.categoryName || "";
     const ctx = canvas.getContext("2d");
 
     if (ctx) {
       drawLandmarks(ctx, result, canvas.width, canvas.height);
     }
 
-    const nextGesture = classifyGesture(landmarks);
-    setGesture(nextGesture);
+    const classification = classifyWithFeatureEngineering(landmarks, handednessLabel);
+    const smoothing = smoothGesture(
+      smoothingRef.current,
+      classification.gesture,
+      classification.confidence,
+      SMOOTH_PROFILE,
+    );
+
+    const nextStableGesture = smoothing.stableGesture;
+    setGesture(nextStableGesture);
+    setRawGesture(classification.gesture);
+    setRawConfidence(classification.confidence);
+    setConsensusRatio(smoothing.consensus);
+    setJitterIndex(smoothing.jitter);
+    setFeatureDim(classification.featureDim);
+    setClassificationSource(classification.source);
     setHandsCount(result?.landmarks?.length ?? 0);
 
-    if (nextGesture === "Open Palm") setLastAction("Play/Pause (simulated)");
-    else if (nextGesture === "Fist") setLastAction("Click (simulated)");
-    else if (nextGesture === "Point Left") setLastAction("Back (simulated)");
-    else if (nextGesture === "Point Right") setLastAction("Forward (simulated)");
+    if (nextStableGesture === "Open Palm") setLastAction("Play/Pause (simulated)");
+    else if (nextStableGesture === "Fist") setLastAction("Click (simulated)");
+    else if (nextStableGesture === "Point Left") setLastAction("Back (simulated)");
+    else if (nextStableGesture === "Point Right") setLastAction("Forward (simulated)");
     else setLastAction("No action");
 
     animationRef.current = requestAnimationFrame(runLoop);
@@ -425,11 +664,19 @@ export default function Page() {
 
         <div className="grid stats">
           <article className="card"><span>Status</span><strong>{status}</strong></article>
-          <article className="card"><span>Gesture</span><strong>{gesture}</strong></article>
+          <article className="card"><span>Gesture (Stable)</span><strong>{gesture}</strong></article>
+          <article className="card"><span>Gesture (Raw)</span><strong>{rawGesture}</strong></article>
+          <article className="card"><span>Confidence</span><strong>{(rawConfidence * 100).toFixed(0)}%</strong></article>
+          <article className="card"><span>Consensus</span><strong>{(consensusRatio * 100).toFixed(0)}%</strong></article>
+          <article className="card"><span>Jitter Index</span><strong>{jitterIndex.toFixed(2)}</strong></article>
           <article className="card"><span>Hands</span><strong>{handsCount}</strong></article>
           <article className="card"><span>FPS</span><strong>{fps.toFixed(1)}</strong></article>
+          <article className="card"><span>Features</span><strong>{featureDim}</strong></article>
+          <article className="card"><span>Classifier</span><strong>{classificationSource}</strong></article>
           <article className="card"><span>Last Action</span><strong>{lastAction}</strong></article>
           <article className="card"><span>Runtime Score</span><strong>{score}%</strong></article>
+          <article className="card"><span>Build</span><strong>{MODULE_BUILD}</strong></article>
+          <article className="card"><span>Smoothing Profile</span><strong>{SMOOTH_PROFILE}</strong></article>
         </div>
 
         <div className="grid main-grid">
