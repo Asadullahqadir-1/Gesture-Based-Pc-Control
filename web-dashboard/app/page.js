@@ -6,6 +6,11 @@ import { FilesetResolver, HandLandmarker } from "@mediapipe/tasks-vision";
 const DEFAULT_GESTURE = "No hand";
 const MODULE_BUILD = "modules v2-web";
 const SMOOTH_PROFILE = "fast";
+const ACTIVE_MODULES = [
+  "Feature Engineering",
+  "Gesture Classification",
+  "Gesture Smoothing & Optimization",
+];
 const HAND_CONNECTIONS = [
   [0, 1], [1, 2], [2, 3], [3, 4],
   [0, 5], [5, 6], [6, 7], [7, 8],
@@ -677,6 +682,15 @@ export default function Page() {
           <article className="card"><span>Runtime Score</span><strong>{score}%</strong></article>
           <article className="card"><span>Build</span><strong>{MODULE_BUILD}</strong></article>
           <article className="card"><span>Smoothing Profile</span><strong>{SMOOTH_PROFILE}</strong></article>
+        </div>
+
+        <div className="grid module-grid">
+          {ACTIVE_MODULES.map((moduleName) => (
+            <article className="card" key={moduleName}>
+              <span>Active Module</span>
+              <strong>{moduleName}</strong>
+            </article>
+          ))}
         </div>
 
         <div className="grid main-grid">
