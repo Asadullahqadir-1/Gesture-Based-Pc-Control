@@ -25,11 +25,11 @@ class FrontendLauncher:
         self.process: subprocess.Popen[str] | None = None
         self.log_queue: queue.Queue[str] = queue.Queue()
 
-        self.target_var = tk.StringVar(value="Gesture Dashboard (Recommended)")
+        self.target_var = tk.StringVar(value="Gesture Runtime Dashboard v2 (Recommended)")
         self.open_quiet_var = tk.BooleanVar(value=False)
         self.auto_stop_var = tk.BooleanVar(value=True)
         self.app_state_var = tk.StringVar(value="Stopped")
-        self.app_target_var = tk.StringVar(value="Gesture Dashboard")
+        self.app_target_var = tk.StringVar(value="Gesture Runtime Dashboard v2")
         self.time_var = tk.StringVar(value="--:--:--")
         self.activity_count_var = tk.StringVar(value="0")
         self.log_count_var = tk.StringVar(value="0")
@@ -276,7 +276,7 @@ class FrontendLauncher:
             style="Modern.TCombobox",
             state="readonly",
             values=[
-                "Gesture Dashboard (Recommended)",
+                "Gesture Runtime Dashboard v2 (Recommended)",
                 "Legacy app.py",
                 "Robot test.py",
             ],
@@ -865,7 +865,7 @@ class FrontendLauncher:
         self.app_target_var.set(self.target_var.get().replace(" (Recommended)", ""))
 
         launch_env = os.environ.copy()
-        if self.target_var.get() == "Gesture Dashboard (Recommended)":
+        if self.target_var.get().startswith("Gesture Runtime Dashboard"):
             permissions = self._request_permissions()
             if permissions is None:
                 self._push_activity("launch canceled: permission dialog")

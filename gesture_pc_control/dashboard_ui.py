@@ -130,6 +130,9 @@ class DashboardUI:
         self.latency_var = tk.StringVar(value="Latency: 0.0ms")
         self.optimization_var = tk.StringVar(value="Consensus: 0.00 | Jitter: 0.00")
         self.features_var = tk.StringVar(value="Features: 0")
+        self.runtime_build_var = tk.StringVar(value="Build: legacy")
+        self.runtime_profile_var = tk.StringVar(value="Profile: unknown")
+        self.runtime_model_var = tk.StringVar(value="Model: rule")
 
         ttk.Label(info_row, textvariable=self.gesture_var, font=("Segoe UI", 12, "bold")).pack(side=tk.LEFT, padx=(0, 20))
         ttk.Label(info_row, textvariable=self.raw_gesture_var, font=("Segoe UI", 11)).pack(side=tk.LEFT, padx=(0, 20))
@@ -148,6 +151,12 @@ class DashboardUI:
         ttk.Label(perf_row, textvariable=self.features_var, font=("Segoe UI", 10)).pack(side=tk.LEFT, padx=(0, 20))
         ttk.Label(perf_row, textvariable=self.latency_var, font=("Segoe UI", 10)).pack(side=tk.LEFT, padx=(0, 20))
         ttk.Label(perf_row, textvariable=self.optimization_var, font=("Segoe UI", 10)).pack(side=tk.LEFT)
+
+        runtime_row = ttk.Frame(self.dashboard_frame)
+        runtime_row.pack(fill=tk.X, pady=(4, 0))
+        ttk.Label(runtime_row, textvariable=self.runtime_build_var, font=("Segoe UI", 10, "bold")).pack(side=tk.LEFT, padx=(0, 20))
+        ttk.Label(runtime_row, textvariable=self.runtime_profile_var, font=("Segoe UI", 10)).pack(side=tk.LEFT, padx=(0, 20))
+        ttk.Label(runtime_row, textvariable=self.runtime_model_var, font=("Segoe UI", 10)).pack(side=tk.LEFT)
 
         ttk.Label(self.dashboard_frame, text="Landmark Debug", font=("Segoe UI", 10, "bold")).pack(anchor=tk.W, pady=(8, 0))
         self.landmark_text = tk.Text(self.dashboard_frame, height=4, wrap="word", font=("Consolas", 9))
@@ -263,6 +272,7 @@ class DashboardUI:
         gesture_text = payload.get("gesture", "None")
         raw_gesture_text = payload.get("raw_gesture", "None")
         confidence = float(payload.get("gesture_confidence", 0.0))
+        classification_source = str(payload.get("classification_source", "rule"))
         landmarks: List[Dict[str, Any]] = payload.get("landmarks", [])
         distance_ft = payload.get("distance_ft")
         controls_enabled = bool(payload.get("controls_enabled", False))
@@ -272,6 +282,9 @@ class DashboardUI:
         jitter_index = float(payload.get("jitter_index", 0.0))
         latency_ms = float(payload.get("pipeline_latency_ms", 0.0))
         feature_dim = int(payload.get("feature_dim", 0))
+        modules_version = str(payload.get("modules_version", "legacy"))
+        smooth_profile = str(payload.get("smooth_profile", "unknown"))
+        model_loaded = bool(payload.get("model_loaded", False))
 
         self.gesture_var.set(f"Gesture: {gesture_text}")
         self.raw_gesture_var.set(f"Raw: {raw_gesture_text}")
@@ -287,6 +300,9 @@ class DashboardUI:
         self.features_var.set(f"Features: {feature_dim}")
         self.latency_var.set(f"Latency: {latency_ms:.1f}ms")
         self.optimization_var.set(f"Consensus: {consensus_ratio:.2f} | Jitter: {jitter_index:.2f}")
+        self.runtime_build_var.set(f"Build: modules {modules_version}")
+        self.runtime_profile_var.set(f"Profile: {smooth_profile}")
+        self.runtime_model_var.set(f"Model: {classification_source} ({'loaded' if model_loaded else 'fallback'})")
 
         self.landmark_text.configure(state=tk.NORMAL)
         self.landmark_text.delete("1.0", tk.END)

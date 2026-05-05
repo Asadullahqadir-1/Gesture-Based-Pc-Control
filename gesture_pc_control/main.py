@@ -87,9 +87,12 @@ class GesturePCControlApp:
 
         model_path = os.getenv("GESTURE_MODEL_PATH", self._DEFAULT_MODEL_PATH)
         self.classifier = GestureClassifier(model_path=model_path)
+        self._model_path = model_path
+        self._model_loaded = self.classifier.model is not None
 
         smooth_profile = os.getenv("GESTURE_SMOOTH_PROFILE", "fast").lower()
         preset = self._SMOOTH_PRESETS.get(smooth_profile, self._SMOOTH_PRESETS["fast"])
+        self._smooth_profile = smooth_profile if smooth_profile in self._SMOOTH_PRESETS else "fast"
 
         smooth_window = int(os.getenv("GESTURE_SMOOTH_WINDOW", str(preset["window_size"])))
         smooth_min_conf = float(os.getenv("GESTURE_MIN_CONFIDENCE", str(preset["min_confidence"])))
@@ -262,6 +265,10 @@ class GesturePCControlApp:
             "classification_source": str(classify_payload.get("source", "rule")),
             "consensus_ratio": float(smooth_payload.get("consensus_ratio", 0.0)),
             "jitter_index": float(smooth_payload.get("jitter_index", 0.0)),
+            "smooth_profile": self._smooth_profile,
+            "modules_version": "v2",
+            "model_loaded": self._model_loaded,
+            "model_path": self._model_path,
             "landmarks": landmarks_payload,
             "distance_ft": primary_distance_ft,
             "controls_enabled": self.controller.enabled,
