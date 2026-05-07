@@ -24,13 +24,18 @@ body {
 .page {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: 330px 1fr;
 }
 
 .sidebar {
   background: linear-gradient(180deg, #173c31, #123228);
   color: #e9f7f0;
   padding: 28px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 100vh;
+  overflow-y: auto;
 }
 
 .sidebar h1 {
@@ -45,7 +50,7 @@ body {
 }
 
 .chip {
-  margin-top: 22px;
+  margin-top: 10px;
   display: inline-block;
   padding: 7px 10px;
   border-radius: 999px;
@@ -55,8 +60,140 @@ body {
   font-weight: 700;
 }
 
+.sidebar-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.sidebar-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.side-card {
+  background: rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(226, 244, 235, 0.18);
+  color: #effaf4;
+}
+
+.side-card-btn {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.16s ease, background 0.16s ease;
+}
+
+.side-card-btn:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.side-card span {
+  color: #c1ddd0;
+}
+
+.side-card strong {
+  font-size: 1.05rem;
+}
+
+.side-card.control-card label {
+  color: #e0f3e9;
+}
+
+.side-card .muted {
+  color: #c6ded2;
+}
+
 .content {
   padding: 22px;
+}
+
+.screen-tabs {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.screen-tab {
+  border: 1px solid var(--line);
+  background: #e8f1ec;
+  color: #1f4337;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.screen-tab.active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #f4fff9;
+}
+
+.screen-panel {
+  margin-top: 12px;
+}
+
+.metric-grid {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.metric-card,
+.module-diagnostic {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px;
+  background: #f5faf7;
+}
+
+.metric-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.metric-head span {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.metric-head strong {
+  color: #10392c;
+}
+
+.metric-track {
+  margin-top: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #dce9e1;
+  overflow: hidden;
+}
+
+.metric-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2c9a6f, #69d6ab);
+}
+
+.module-diagnostics-grid {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.module-focus-points {
+  margin-top: 10px;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  padding: 10px;
+  background: #f8fcf9;
 }
 
 .topbar {
@@ -74,11 +211,6 @@ body {
 .topbar p {
   margin: 6px 0 0;
   color: var(--muted);
-}
-
-.actions {
-  display: flex;
-  gap: 10px;
 }
 
 .btn {
@@ -106,11 +238,6 @@ body {
   gap: 12px;
 }
 
-.stats {
-  margin-top: 16px;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-}
-
 .card {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -128,16 +255,6 @@ body {
   display: block;
   margin-top: 5px;
   font-size: 1.15rem;
-}
-
-.main-grid {
-  margin-top: 12px;
-  grid-template-columns: 1.5fr 0.8fr;
-}
-
-.module-grid {
-  margin-top: 12px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .video-wrap {
@@ -161,8 +278,16 @@ body {
   transform: scaleX(-1);
 }
 
+.video-card {
+  margin-top: 16px;
+}
+
 .control-card h3 {
   margin: 0;
+}
+
+.control-card[role="button"] {
+  cursor: pointer;
 }
 
 .control-card label {
@@ -232,22 +357,38 @@ body {
 
   .sidebar {
     padding: 16px;
+    max-height: none;
+    overflow: visible;
   }
 
-  .stats {
+  .sidebar-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .module-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .main-grid {
-    grid-template-columns: 1fr;
+  .control-card {
+    grid-column: 1 / -1;
   }
 
   .topbar {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .module-diagnostics-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .sidebar-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .metric-grid {
+    grid-template-columns: 1fr;
   }
 }
