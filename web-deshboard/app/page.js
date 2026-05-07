@@ -11,6 +11,11 @@ const ACTIVE_MODULES = [
   "Gesture Classification",
   "Gesture Smoothing & Optimization",
 ];
+const MODULE_DETAILS = {
+  "Feature Engineering": "Normalizes hand landmarks and builds a compact feature vector for robust gesture recognition.",
+  "Gesture Classification": "Runs rule-based + feature-assisted gesture labeling with confidence scoring.",
+  "Gesture Smoothing & Optimization": "Applies temporal consensus and anti-jitter logic before triggering actions.",
+};
 const HAND_CONNECTIONS = [
   [0, 1], [1, 2], [2, 3], [3, 4],
   [0, 5], [5, 6], [6, 7], [7, 8],
@@ -481,6 +486,7 @@ export default function Page() {
   const [fps, setFps] = useState(0);
   const [lastAction, setLastAction] = useState("Waiting");
   const [error, setError] = useState("");
+  const [activeScreen, setActiveScreen] = useState("overview");
 
   const score = useMemo(() => {
     let s = 40;
@@ -489,6 +495,43 @@ export default function Page() {
     if (fps > 15) s += 10;
     return Math.min(100, s);
   }, [running, gesture, fps]);
+
+  const metricRows = useMemo(() => {
+    const fpsRatio = clamp(fps / 30, 0, 1);
+    const handsRatio = clamp(handsCount / 2, 0, 1);
+    const stabilityRatio = clamp(1 - jitterIndex, 0, 1);
+    return [
+      { label: "Confidence", value: `${(rawConfidence * 100).toFixed(0)}%`, ratio: rawConfidence },
+      { label: "Consensus", value: `${(consensusRatio * 100).toFixed(0)}%`, ratio: consensusRatio },
+      { label: "FPS", value: fps.toFixed(1), ratio: fpsRatio },
+      { label: "Runtime Score", value: `${score}%`, ratio: score / 100 },
+      { label: "Hands", value: `${handsCount}/2`, ratio: handsRatio },
+      { label: "Stability", value: `${(stabilityRatio * 100).toFixed(0)}%`, ratio: stabilityRatio },
+    ];
+  }, [rawConfidence, consensusRatio, fps, score, handsCount, jitterIndex]);
+
+  const moduleRows = useMemo(() => {
+    const confidencePct = Math.round(rawConfidence * 100);
+    const consensusPct = Math.round(consensusRatio * 100);
+    const smoothPct = Math.round(clamp((1 - jitterIndex) * 100, 0, 100));
+    return [
+      {
+        name: "Feature Engineering",
+        health: Math.round(clamp((featureDim / 51) * 100, 0, 100)),
+        detail: `Vector dim ${featureDim}/51`,
+      },
+      {
+        name: "Gesture Classification",
+        health: confidencePct,
+        detail: `Raw ${rawGesture} (${confidencePct}%)`,
+      },
+      {
+        name: "Gesture Smoothing & Optimization",
+        health: Math.round((consensusPct + smoothPct) / 2),
+        detail: `Consensus ${consensusPct}% | Smooth ${smoothPct}%`,
+      },
+    ];
+  }, [featureDim, rawGesture, rawConfidence, consensusRatio, jitterIndex]);
 
   useEffect(() => {
     return () => {
@@ -649,59 +692,52 @@ export default function Page() {
       <aside className="sidebar">
         <h1>DriveFlow</h1>
         <div className="chip">{running ? "APP RUNNING" : "APP STOPPED"}</div>
-      </aside>
 
-      <section className="content">
-        <header className="topbar">
-          <div>
-            <h2>Operations Dashboard</h2>
-            <p>Click Run App, grant permission, and start webcam gesture control.</p>
-          </div>
-          <div className="actions">
-            <button className="btn primary" onClick={() => setPermissionOpen(true)}>
-              Run App
-            </button>
-            <button className="btn" onClick={stopApp}>
-              Stop App
-            </button>
-          </div>
-        </header>
-
-        <div className="grid stats">
-          <article className="card"><span>Status</span><strong>{status}</strong></article>
-          <article className="card"><span>Gesture (Stable)</span><strong>{gesture}</strong></article>
-          <article className="card"><span>Gesture (Raw)</span><strong>{rawGesture}</strong></article>
-          <article className="card"><span>Confidence</span><strong>{(rawConfidence * 100).toFixed(0)}%</strong></article>
-          <article className="card"><span>Consensus</span><strong>{(consensusRatio * 100).toFixed(0)}%</strong></article>
-          <article className="card"><span>Jitter Index</span><strong>{jitterIndex.toFixed(2)}</strong></article>
-          <article className="card"><span>Hands</span><strong>{handsCount}</strong></article>
-          <article className="card"><span>FPS</span><strong>{fps.toFixed(1)}</strong></article>
-          <article className="card"><span>Features</span><strong>{featureDim}</strong></article>
-          <article className="card"><span>Classifier</span><strong>{classificationSource}</strong></article>
-          <article className="card"><span>Last Action</span><strong>{lastAction}</strong></article>
-          <article className="card"><span>Runtime Score</span><strong>{score}%</strong></article>
-          <article className="card"><span>Build</span><strong>{MODULE_BUILD}</strong></article>
-          <article className="card"><span>Smoothing Profile</span><strong>{SMOOTH_PROFILE}</strong></article>
+        <div className="sidebar-actions">
+          <button className="btn primary" onClick={() => setPermissionOpen(true)}>
+            Run App
+          </button>
+          <button className="btn" onClick={stopApp}>
+            Stop App
+          </button>
         </div>
 
-        <div className="grid module-grid">
+        <div className="sidebar-grid">
+          <button className="card side-card side-card-btn" onClick={() => setActiveScreen("overview")}><span>Status</span><strong>{status}</strong></button>
+          <button className="card side-card side-card-btn" onClick={() => setActiveScreen("metrics")}><span>Gesture (Stable)</span><strong>{gesture}</strong></button>
+          <button className="card side-card side-card-btn" onClick={() => setActiveScreen("metrics")}><span>Gesture (Raw)</span><strong>{rawGesture}</strong></button>
+          <button className="card side-card side-card-btn" onClick={() => setActiveScreen("metrics")}><span>Confidence</span><strong>{(rawConfidence * 100).toFixed(0)}%</strong></button>
+          <button className="card side-card side-card-btn" onClick={() => setActiveScreen("metrics")}><span>Consensus</span><strong>{(consensusRatio * 100).toFixed(0)}%</strong></button>
+          <button className="card side-card side-card-btn" onClick={() => setActiveScreen("metrics")}><span>Jitter Index</span><strong>{jitterIndex.toFixed(2)}</strong></button>
+          <button className="card side-card side-card-btn" onClick={() => setActiveScreen("metrics")}><span>Hands</span><strong>{handsCount}</strong></button>
+          <button className="card side-card side-card-btn" onClick={() => setActiveScreen("metrics")}><span>FPS</span><strong>{fps.toFixed(1)}</strong></button>
+          <button className="card side-card side-card-btn" onClick={() => setActiveScreen("metrics")}><span>Features</span><strong>{featureDim}</strong></button>
+          <button className="card side-card side-card-btn" onClick={() => setActiveScreen("metrics")}><span>Classifier</span><strong>{classificationSource}</strong></button>
+          <button className="card side-card side-card-btn" onClick={() => setActiveScreen("metrics")}><span>Last Action</span><strong>{lastAction}</strong></button>
+          <button className="card side-card side-card-btn" onClick={() => setActiveScreen("metrics")}><span>Runtime Score</span><strong>{score}%</strong></button>
+          <button className="card side-card side-card-btn" onClick={() => setActiveScreen("modules")}><span>Build</span><strong>{MODULE_BUILD}</strong></button>
+          <button className="card side-card side-card-btn" onClick={() => setActiveScreen("modules")}><span>Smoothing Profile</span><strong>{SMOOTH_PROFILE}</strong></button>
+
           {ACTIVE_MODULES.map((moduleName) => (
-            <article className="card" key={moduleName}>
+            <button
+              className="card side-card side-card-btn"
+              key={moduleName}
+              onClick={() => setActiveScreen(moduleName)}
+            >
               <span>Active Module</span>
               <strong>{moduleName}</strong>
-            </article>
+            </button>
           ))}
-        </div>
 
-        <div className="grid main-grid">
-          <article className="card video-card">
-            <div className="video-wrap">
-              <video ref={videoRef} playsInline muted className="mirror-feed" />
-              <canvas ref={overlayRef} />
-            </div>
-          </article>
-
-          <article className="card control-card">
+          <article
+            className="card side-card control-card"
+            role="button"
+            tabIndex={0}
+            onClick={() => setActiveScreen("permissions")}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") setActiveScreen("permissions");
+            }}
+          >
             <h3>Permissions</h3>
             <label>
               <input
@@ -723,6 +759,111 @@ export default function Page() {
             {error ? <p className="error">{error}</p> : null}
           </article>
         </div>
+      </aside>
+
+      <section className="content">
+        <header className="topbar">
+          <div>
+            <h2>Operations Dashboard</h2>
+            <p>Click Run App, grant permission, and start webcam gesture control.</p>
+          </div>
+        </header>
+
+        <div className="screen-tabs" role="tablist" aria-label="Dashboard Screens">
+          <button className={`screen-tab ${activeScreen === "overview" ? "active" : ""}`} onClick={() => setActiveScreen("overview")} aria-selected={activeScreen === "overview"}>Overview</button>
+          <button className={`screen-tab ${activeScreen === "metrics" ? "active" : ""}`} onClick={() => setActiveScreen("metrics")} aria-selected={activeScreen === "metrics"}>Metrics</button>
+          <button className={`screen-tab ${activeScreen === "modules" ? "active" : ""}`} onClick={() => setActiveScreen("modules")} aria-selected={activeScreen === "modules"}>Modules</button>
+          <button className={`screen-tab ${activeScreen === "permissions" ? "active" : ""}`} onClick={() => setActiveScreen("permissions")} aria-selected={activeScreen === "permissions"}>Permissions</button>
+          <button className={`screen-tab ${activeScreen === "live" ? "active" : ""}`} onClick={() => setActiveScreen("live")} aria-selected={activeScreen === "live"}>Live Feed</button>
+        </div>
+
+        <article className="card screen-panel">
+          {activeScreen === "overview" ? (
+            <>
+              <h3>System Overview</h3>
+              <p className="muted">Use the left feature cards or tabs above to switch screens on this page.</p>
+              <p className="muted">Current status: <strong>{status}</strong> | Gesture: <strong>{gesture}</strong> | Last action: <strong>{lastAction}</strong></p>
+            </>
+          ) : null}
+
+          {activeScreen === "metrics" ? (
+            <>
+              <h3>Runtime Metrics</h3>
+              <p className="muted">Live signal quality panel for gesture runtime diagnostics.</p>
+              <div className="metric-grid">
+                {metricRows.map((item) => (
+                  <article className="metric-card" key={item.label}>
+                    <div className="metric-head">
+                      <span>{item.label}</span>
+                      <strong>{item.value}</strong>
+                    </div>
+                    <div className="metric-track">
+                      <div className="metric-fill" style={{ width: `${Math.round(item.ratio * 100)}%` }} />
+                    </div>
+                  </article>
+                ))}
+              </div>
+              <p className="muted">Source: {classificationSource} | Active gesture: {gesture}</p>
+            </>
+          ) : null}
+
+          {activeScreen === "modules" ? (
+            <>
+              <h3>Pipeline Modules</h3>
+              <p className="muted">Build {MODULE_BUILD} with {SMOOTH_PROFILE} smoothing profile.</p>
+              <div className="module-diagnostics-grid">
+                {moduleRows.map((module) => (
+                  <article className="module-diagnostic" key={module.name}>
+                    <div className="metric-head">
+                      <span>{module.name}</span>
+                      <strong>{module.health}%</strong>
+                    </div>
+                    <div className="metric-track">
+                      <div className="metric-fill" style={{ width: `${module.health}%` }} />
+                    </div>
+                    <p className="muted">{MODULE_DETAILS[module.name]}</p>
+                    <p className="muted">{module.detail}</p>
+                  </article>
+                ))}
+              </div>
+            </>
+          ) : null}
+
+          {activeScreen === "permissions" ? (
+            <>
+              <h3>Permissions Screen</h3>
+              <p className="muted">Camera access: <strong>{cameraAllowed ? "Allowed" : "Blocked"}</strong></p>
+              <p className="muted">Control access: <strong>{controlsAllowed ? "Allowed" : "Blocked"}</strong></p>
+              <p className="muted">You can also toggle both in the sidebar permissions card.</p>
+            </>
+          ) : null}
+
+          {activeScreen === "Feature Engineering" || activeScreen === "Gesture Classification" || activeScreen === "Gesture Smoothing & Optimization" ? (
+            <>
+              <h3>{activeScreen}</h3>
+              <p className="muted">{MODULE_DETAILS[activeScreen]}</p>
+              <div className="module-focus-points">
+                <p className="muted"><strong>Input:</strong> {activeScreen === "Feature Engineering" ? "21 landmark points" : activeScreen === "Gesture Classification" ? "Feature vector + handedness" : "Raw gesture stream"}</p>
+                <p className="muted"><strong>Output:</strong> {activeScreen === "Feature Engineering" ? `Feature dimension ${featureDim}` : activeScreen === "Gesture Classification" ? `${rawGesture} @ ${(rawConfidence * 100).toFixed(0)}%` : `${gesture} with ${(consensusRatio * 100).toFixed(0)}% consensus`}</p>
+                <p className="muted"><strong>Health:</strong> {moduleRows.find((m) => m.name === activeScreen)?.health ?? 0}%</p>
+              </div>
+            </>
+          ) : null}
+
+          {activeScreen === "live" ? (
+            <>
+              <h3>Live Feed Screen</h3>
+              <p className="muted">Camera stream and hand landmark overlay are shown below.</p>
+            </>
+          ) : null}
+        </article>
+
+        <article className="card video-card">
+          <div className="video-wrap">
+            <video ref={videoRef} playsInline muted className="mirror-feed" />
+            <canvas ref={overlayRef} />
+          </div>
+        </article>
       </section>
 
       {permissionOpen ? (
