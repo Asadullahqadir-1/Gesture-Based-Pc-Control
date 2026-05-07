@@ -6,32 +6,30 @@ Builds and trains a lightweight CNN model optimized for Raspberry Pi 5
 """
 
 import os
+import argparse
+import json
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.utils.class_weight import compute_class_weight
 import matplotlib.pyplot as plt
 import seaborn as sns
 
 # Configuration
-DATASET_DIR = 'dataset'
+DATASET_DIR = 'images'
 IMG_SIZE = 128
 BATCH_SIZE = 32
 EPOCHS = 15
-NUM_CLASSES = 5
 
 # Model files
 MODEL_H5 = 'model.h5'
 MODEL_TFLITE = 'gesture_model.tflite'
+LABELS_JSON = 'gesture_labels.json'
 
-# Gesture classes (must match folder names)
-CLASS_NAMES = ['right_finger', 'left_finger', 'open_hand', 'close_hand', 'two_finger']
-GESTURE_LABELS = ['RIGHT', 'LEFT', 'FORWARD', 'BACK', 'STOP']
-
-
-def create_lightweight_model(input_shape=(IMG_SIZE, IMG_SIZE, 3), num_classes=NUM_CLASSES):
+def create_lightweight_model(input_shape=(IMG_SIZE, IMG_SIZE, 3), num_classes=5):
     """
     Create a very lightweight CNN model optimized for edge devices
     Alternative: Use MobileNetV2 (commented out below)
@@ -74,7 +72,7 @@ def create_lightweight_model(input_shape=(IMG_SIZE, IMG_SIZE, 3), num_classes=NU
     return model
 
 
-def create_mobilenet_model(input_shape=(IMG_SIZE, IMG_SIZE, 3), num_classes=NUM_CLASSES):
+def create_mobilenet_model(input_shape=(IMG_SIZE, IMG_SIZE, 3), num_classes=5):
     """
     Alternative: Use MobileNetV2 (lighter but requires more memory)
     Uncomment this function and use it instead of create_lightweight_model if preferred
@@ -97,11 +95,21 @@ def create_mobilenet_model(input_shape=(IMG_SIZE, IMG_SIZE, 3), num_classes=NUM_
         layers.Dropout(0.5),
         layers.Dense(num_classes, activation='softmax')
     ])
-    
-    return model
+
+    return model, base_model
 
 
-def prepare_data_generators():
+def save_label_mapping(class_labels, output_path=LABELS_JSON):
+    payload = {
+        "labels": class_labels,
+        "num_classes": len(class_labels),
+    }
+    with open(output_path, 'w', encoding='utf-8') as f:
+        json.dump(payload, f, indent=2)
+    print(f"Saved labels mapping to '{output_path}'")
+
+
+def prepare_data_generators(dataset_dir, img_size, batch_size, validation_split=0.2):
     """Prepare data generators with augmentation"""
     
     # Data augmentation for training
@@ -113,20 +121,20 @@ def prepare_data_generators():
         zoom_range=0.2,
         horizontal_flip=True,
         brightness_range=[0.8, 1.2],
-        validation_split=0.2  # 80% train, 20% validation
+        validation_split=validation_split
     )
     
     # No augmentation for validation
     val_datagen = ImageDataGenerator(
         rescale=1.0/255.0,
-        validation_split=0.2
+        validation_split=validation_split
     )
     
     # Training generator
     train_generator = train_datagen.flow_from_directory(
-        DATASET_DIR,
-        target_size=(IMG_SIZE, IMG_SIZE),
-        batch_size=BATCH_SIZE,
+        dataset_dir,
+        target_size=(img_size, img_size),
+        batch_size=batch_size,
         class_mode='categorical',
         subset='training',
         shuffle=True
@@ -134,9 +142,9 @@ def prepare_data_generators():
     
     # Validation generator
     val_generator = val_datagen.flow_from_directory(
-        DATASET_DIR,
-        target_size=(IMG_SIZE, IMG_SIZE),
-        batch_size=BATCH_SIZE,
+        dataset_dir,
+        target_size=(img_size, img_size),
+        batch_size=batch_size,
         class_mode='categorical',
         subset='validation',
         shuffle=False
@@ -145,43 +153,59 @@ def prepare_data_generators():
     return train_generator, val_generator
 
 
-def train_model():
+def train_model(dataset_dir=DATASET_DIR, img_size=IMG_SIZE, batch_size=BATCH_SIZE, epochs=EPOCHS, validation_split=0.2, model_type='mobilenet'):
     """Main training function"""
     print("="*60)
     print("HAND GESTURE RECOGNITION - MODEL TRAINING")
     print("="*60)
     
     # Check if dataset exists
-    if not os.path.exists(DATASET_DIR):
-        print(f"Error: Dataset directory '{DATASET_DIR}' not found!")
+    if not os.path.exists(dataset_dir):
+        print(f"Error: Dataset directory '{dataset_dir}' not found!")
         print("Please run collect_data.py first to collect images.")
         return
-    
-    # Check if all class folders exist
-    for class_name in CLASS_NAMES:
-        class_path = os.path.join(DATASET_DIR, class_name)
-        if not os.path.exists(class_path):
-            print(f"Warning: Class folder '{class_path}' not found!")
+
+    class_folders = sorted(
+        [entry.name for entry in os.scandir(dataset_dir) if entry.is_dir()]
+    )
+    if not class_folders:
+        print(f"Error: No class folders found under '{dataset_dir}'.")
+        return
+    print(f"Discovered classes ({len(class_folders)}): {class_folders}")
     
     # Prepare data generators
     print("\n[1/5] Preparing data generators...")
-    train_gen, val_gen = prepare_data_generators()
+    train_gen, val_gen = prepare_data_generators(
+        dataset_dir=dataset_dir,
+        img_size=img_size,
+        batch_size=batch_size,
+        validation_split=validation_split,
+    )
     
     print(f"Found {train_gen.samples} training images")
     print(f"Found {val_gen.samples} validation images")
     print(f"Classes: {list(train_gen.class_indices.keys())}")
     
+    class_labels = [label for label, _ in sorted(train_gen.class_indices.items(), key=lambda item: item[1])]
+    save_label_mapping(class_labels)
+
     # Create model
     print("\n[2/5] Creating model...")
-    # Use lightweight custom model (faster, smaller)
-    model = create_lightweight_model()
-    
-    # Uncomment below to use MobileNetV2 instead:
-    # model = create_mobilenet_model()
-    
-    # Compile model
+    num_classes = train_gen.num_classes
+    if model_type == 'lightweight':
+        model = create_lightweight_model(
+            input_shape=(img_size, img_size, 3),
+            num_classes=num_classes,
+        )
+        base_model = None
+    else:
+        model, base_model = create_mobilenet_model(
+            input_shape=(img_size, img_size, 3),
+            num_classes=num_classes,
+        )
+
     model.compile(
-        optimizer=keras.optimizers.Adam(learning_rate=0.001),
+        optimizer=keras.optimizers.Adam(learning_rate=3e-4),
         loss='categorical_crossentropy',
         metrics=['accuracy']
     )
@@ -195,11 +219,18 @@ def train_model():
     print(f"\nTotal parameters: {total_params:,}")
     print(f"Model size (approx): {total_params * 4 / 1024 / 1024:.2f} MB (float32)")
     
+    # Class weighting for imbalanced datasets
+    y_train = train_gen.classes
+    classes = np.unique(y_train)
+    weights = compute_class_weight(class_weight='balanced', classes=classes, y=y_train)
+    class_weight = {int(cls): float(weight) for cls, weight in zip(classes, weights)}
+    print(f"Class weights: {class_weight}")
+
     # Callbacks
     callbacks = [
         keras.callbacks.EarlyStopping(
             monitor='val_loss',
-            patience=5,
+            patience=6,
             restore_best_weights=True
         ),
         keras.callbacks.ModelCheckpoint(
@@ -211,20 +242,64 @@ def train_model():
         keras.callbacks.ReduceLROnPlateau(
             monitor='val_loss',
             factor=0.5,
-            patience=3,
+            patience=2,
             min_lr=1e-7
         )
     ]
-    
+
     # Train model
     print("\n[3/5] Training model...")
-    history = model.fit(
-        train_gen,
-        epochs=EPOCHS,
-        validation_data=val_gen,
-        callbacks=callbacks,
-        verbose=1
-    )
+
+    if base_model is None:
+        history = model.fit(
+            train_gen,
+            epochs=epochs,
+            validation_data=val_gen,
+            callbacks=callbacks,
+            class_weight=class_weight,
+            verbose=1
+        )
+    else:
+        warmup_epochs = max(4, epochs // 3)
+        finetune_epochs = max(4, epochs - warmup_epochs)
+
+        print(f"Warmup phase: {warmup_epochs} epochs (frozen backbone)")
+        warmup_history = model.fit(
+            train_gen,
+            epochs=warmup_epochs,
+            validation_data=val_gen,
+            callbacks=callbacks,
+            class_weight=class_weight,
+            verbose=1
+        )
+
+        print(f"Fine-tune phase: {finetune_epochs} epochs (top backbone layers unfrozen)")
+        base_model.trainable = True
+        freeze_until = max(0, len(base_model.layers) - 40)
+        for layer in base_model.layers[:freeze_until]:
+            layer.trainable = False
+
+        model.compile(
+            optimizer=keras.optimizers.Adam(learning_rate=1e-5),
+            loss='categorical_crossentropy',
+            metrics=['accuracy']
+        )
+
+        finetune_history = model.fit(
+            train_gen,
+            epochs=finetune_epochs,
+            validation_data=val_gen,
+            callbacks=callbacks,
+            class_weight=class_weight,
+            verbose=1
+        )
+
+        # Merge histories so plotting remains unchanged.
+        history = warmup_history
+        history.history['accuracy'].extend(finetune_history.history.get('accuracy', []))
+        history.history['val_accuracy'].extend(finetune_history.history.get('val_accuracy', []))
+        history.history['loss'].extend(finetune_history.history.get('loss', []))
+        history.history['val_loss'].extend(finetune_history.history.get('val_loss', []))
     
     # Load best model
     print("\n[4/5] Loading best model...")
@@ -247,11 +322,11 @@ def train_model():
     print("\n" + "="*60)
     print("CLASSIFICATION REPORT")
     print("="*60)
-    class_labels = [GESTURE_LABELS[i] for i in range(len(CLASS_NAMES))]
     print(classification_report(
         true_classes,
         predicted_classes,
-        target_names=class_labels
+        target_names=class_labels,
+        zero_division=0,
     ))
     
     # Confusion matrix
@@ -349,5 +424,21 @@ if __name__ == '__main__':
         except RuntimeError as e:
             print(f"GPU setup error: {e}")
     
-    train_model()
+    parser = argparse.ArgumentParser(description='Train CNN gesture model from image folders')
+    parser.add_argument('--dataset-dir', default=DATASET_DIR, help='Path to dataset root (class subfolders)')
+    parser.add_argument('--img-size', type=int, default=IMG_SIZE, help='Square image size for training')
+    parser.add_argument('--batch-size', type=int, default=BATCH_SIZE, help='Batch size')
+    parser.add_argument('--epochs', type=int, default=EPOCHS, help='Number of training epochs')
+    parser.add_argument('--validation-split', type=float, default=0.2, help='Validation split ratio')
+    parser.add_argument('--model-type', choices=['lightweight', 'mobilenet'], default='mobilenet', help='Model architecture to train')
+    args = parser.parse_args()
+
+    train_model(
+        dataset_dir=args.dataset_dir,
+        img_size=args.img_size,
+        batch_size=args.batch_size,
+        epochs=args.epochs,
+        validation_split=args.validation_split,
+        model_type=args.model_type,
+    )
 

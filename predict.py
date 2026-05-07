@@ -8,6 +8,8 @@ Uses TFLite model for real-time inference optimized for Raspberry Pi 5
 import cv2
 import numpy as np
 import tensorflow as tf
+import json
+import os
 
 # Configuration
 MODEL_TFLITE = 'gesture_model.tflite'  # Will be created after training with train_model.py
@@ -18,8 +20,8 @@ ROI_SIZE = 300
 ROI_OFFSET_X = 0
 ROI_OFFSET_Y = -50
 
-# Gesture labels
-GESTURE_LABELS = ['RIGHT', 'LEFT', 'FORWARD', 'BACK', 'STOP']
+LABELS_JSON = 'gesture_labels.json'
+DEFAULT_GESTURE_LABELS = ['RIGHT', 'LEFT', 'FORWARD', 'BACK', 'STOP']
 
 
 class GesturePredictor:
@@ -122,6 +124,23 @@ def draw_prediction(frame, gesture, confidence, x1, y1, x2, y2):
     return frame
 
 
+def load_gesture_labels(num_classes):
+    if os.path.exists(LABELS_JSON):
+        try:
+            with open(LABELS_JSON, 'r', encoding='utf-8') as f:
+                payload = json.load(f)
+            labels = payload.get('labels', [])
+            if isinstance(labels, list) and len(labels) == num_classes:
+                return [str(label) for label in labels]
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    if len(DEFAULT_GESTURE_LABELS) == num_classes:
+        return DEFAULT_GESTURE_LABELS
+
+    return [f'class_{i}' for i in range(num_classes)]
+
+
 def main():
     """Main prediction loop"""
     print("="*60)
@@ -139,6 +158,10 @@ def main():
     print("\nLoading model...")
     predictor = GesturePredictor(MODEL_TFLITE)
     
+    num_classes = int(predictor.output_details[0]['shape'][-1])
+    gesture_labels = load_gesture_labels(num_classes)
+    print(f"Loaded {len(gesture_labels)} labels: {gesture_labels}")
+
     # Initialize webcam
     print("\nInitializing webcam...")
     cap = cv2.VideoCapture(0)
@@ -185,14 +208,14 @@ def main():
         if roi.size > 0:
             # Predict gesture
             predicted_class, confidence, probabilities = predictor.predict(roi)
-            gesture = GESTURE_LABELS[predicted_class]
+            gesture = gesture_labels[predicted_class]
             
             # Draw prediction
             frame = draw_prediction(frame, gesture, confidence, x1, y1, x2, y2)
             
             # Draw all probabilities (optional, for debugging)
             y_offset = 30
-            for i, (label, prob) in enumerate(zip(GESTURE_LABELS, probabilities)):
+            for i, (label, prob) in enumerate(zip(gesture_labels, probabilities)):
                 color = (0, 255, 0) if i == predicted_class else (255, 255, 255)
                 text = f"{label}: {prob:.2f}"
                 cv2.putText(frame, text, (10, y_offset + i * 25),
