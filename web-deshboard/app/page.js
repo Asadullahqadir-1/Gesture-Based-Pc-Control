@@ -703,10 +703,7 @@ export default function Page() {
         </div>
 
         <div className="sidebar-grid">
-          <button className="card side-card side-card-btn" onClick={() => setActiveScreen("overview")}><span>Status</span><strong>{status}</strong></button>
-          <button className="card side-card side-card-btn" onClick={() => setActiveScreen("metrics")}><span>Gesture (Stable)</span><strong>{gesture}</strong></button>
-          <button className="card side-card side-card-btn" onClick={() => setActiveScreen("metrics")}><span>Gesture (Raw)</span><strong>{rawGesture}</strong></button>
-          <button className="card side-card side-card-btn" onClick={() => setActiveScreen("metrics")}><span>Confidence</span><strong>{(rawConfidence * 100).toFixed(0)}%</strong></button>
+          {/* Removed Status, Gesture (Stable), Gesture (Raw), and Confidence from sidebar as they are already present above the live feed */}
           {/* Removed sidebar metrics that are duplicated above the live feed, including Consensus, Jitter Index, Classifier, Hands, FPS, Features, Last Action, and Runtime Score as requested */}
           {/* Removed Build, Smoothing Profile, and Active Module cards as requested */}
 
