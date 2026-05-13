@@ -106,15 +106,45 @@ body {
   color: #c6ded2;
 }
 
+.sidebar-tabs {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #3a3a3a;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebar-tab {
+  width: 100%;
+  padding: 10px 12px;
+  background: #333333;
+  color: #a0a0a0;
+  border: 1px solid #3a3a3a;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.sidebar-tab:hover {
+  background: #3a3a3a;
+  color: #00d084;
+}
+
+.sidebar-tab.active {
+  background: #00d084;
+  color: #000000;
+  border-color: #00a366;
+}
+
 .content {
   padding: 22px;
 }
 
 .screen-tabs {
-  margin-top: 12px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  display: none;
 }
 
 .screen-tab {
@@ -198,7 +228,8 @@ body {
 }
 
 .topbar {
-  display: flex;
+  display: none;
+}
   justify-content: space-between;
   align-items: center;
   gap: 16px;

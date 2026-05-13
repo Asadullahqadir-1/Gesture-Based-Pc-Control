@@ -826,6 +826,13 @@ export default function Page() {
             <p className="muted">Browser will ask actual camera permission on first run.</p>
             {error ? <p className="error">{error}</p> : null}
           </article>
+
+          <div className="sidebar-tabs">
+            <button className={`sidebar-tab ${activeScreen === "overview" ? "active" : ""}`} onClick={() => setActiveScreen("overview")}>📊 Overview</button>
+            <button className={`sidebar-tab ${activeScreen === "metrics" ? "active" : ""}`} onClick={() => setActiveScreen("metrics")}>📈 Metrics</button>
+            <button className={`sidebar-tab ${activeScreen === "modules" ? "active" : ""}`} onClick={() => setActiveScreen("modules")}>⚙️ Modules</button>
+            <button className={`sidebar-tab ${activeScreen === "live" ? "active" : ""}`} onClick={() => setActiveScreen("live")}>📹 Live Feed</button>
+          </div>
         </div>
       </aside>
 
