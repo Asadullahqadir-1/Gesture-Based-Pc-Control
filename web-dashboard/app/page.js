@@ -827,31 +827,19 @@ export default function Page() {
             {error ? <p className="error">{error}</p> : null}
           </article>
 
-          <div className="sidebar-tabs">
-            <button className={`sidebar-tab ${activeScreen === "overview" ? "active" : ""}`} onClick={() => setActiveScreen("overview")}>📊 Overview</button>
-            <button className={`sidebar-tab ${activeScreen === "metrics" ? "active" : ""}`} onClick={() => setActiveScreen("metrics")}>📈 Metrics</button>
-            <button className={`sidebar-tab ${activeScreen === "modules" ? "active" : ""}`} onClick={() => setActiveScreen("modules")}>⚙️ Modules</button>
-            <button className={`sidebar-tab ${activeScreen === "live" ? "active" : ""}`} onClick={() => setActiveScreen("live")}>📹 Live Feed</button>
+          <div className="sidebar-tabs" role="tablist" aria-label="Dashboard Screens">
+            <h3>Operations Dashboard</h3>
+            <p className="muted">Choose a screen to view meaningful runtime data.</p>
+            <button className={`sidebar-tab ${activeScreen === "overview" ? "active" : ""}`} onClick={() => setActiveScreen("overview")}>Overview</button>
+            <button className={`sidebar-tab ${activeScreen === "metrics" ? "active" : ""}`} onClick={() => setActiveScreen("metrics")}>Metrics</button>
+            <button className={`sidebar-tab ${activeScreen === "modules" ? "active" : ""}`} onClick={() => setActiveScreen("modules")}>Modules</button>
+            <button className={`sidebar-tab ${activeScreen === "permissions" ? "active" : ""}`} onClick={() => setActiveScreen("permissions")}>Permissions</button>
+            <button className={`sidebar-tab ${activeScreen === "live" ? "active" : ""}`} onClick={() => setActiveScreen("live")}>Live Feed</button>
           </div>
         </div>
       </aside>
 
       <section className="content">
-        <header className="topbar">
-          <div>
-            <h2>Operations Dashboard</h2>
-            <p>Click Run App, grant permission, and start webcam gesture control.</p>
-          </div>
-        </header>
-
-        <div className="screen-tabs" role="tablist" aria-label="Dashboard Screens">
-          <button className={`screen-tab ${activeScreen === "overview" ? "active" : ""}`} onClick={() => setActiveScreen("overview")} aria-selected={activeScreen === "overview"}>Overview</button>
-          <button className={`screen-tab ${activeScreen === "metrics" ? "active" : ""}`} onClick={() => setActiveScreen("metrics")} aria-selected={activeScreen === "metrics"}>Metrics</button>
-          <button className={`screen-tab ${activeScreen === "modules" ? "active" : ""}`} onClick={() => setActiveScreen("modules")} aria-selected={activeScreen === "modules"}>Modules</button>
-          <button className={`screen-tab ${activeScreen === "permissions" ? "active" : ""}`} onClick={() => setActiveScreen("permissions")} aria-selected={activeScreen === "permissions"}>Permissions</button>
-          <button className={`screen-tab ${activeScreen === "live" ? "active" : ""}`} onClick={() => setActiveScreen("live")} aria-selected={activeScreen === "live"}>Live Feed</button>
-        </div>
-
         <article className="card screen-panel">
           {activeScreen === "overview" ? (
             <>

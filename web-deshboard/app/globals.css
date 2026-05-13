@@ -228,8 +228,7 @@ body {
 }
 
 .topbar {
-  display: none;
-}
+  display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 16px;
