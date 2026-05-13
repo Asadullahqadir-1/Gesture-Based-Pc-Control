@@ -28,8 +28,8 @@ body {
 }
 
 .sidebar {
-  background: linear-gradient(180deg, #173c31, #123228);
-  color: #e9f7f0;
+  background: linear-gradient(180deg, #1a5a4a, #0f3d34);
+  color: #f0f8f5;
   padding: 28px 22px;
   display: flex;
   flex-direction: column;
@@ -72,9 +72,9 @@ body {
 }
 
 .side-card {
-  background: rgba(255, 255, 255, 0.09);
-  border: 1px solid rgba(226, 244, 235, 0.18);
-  color: #effaf4;
+  background: rgba(15, 61, 52, 0.6);
+  border: 1px solid rgba(100, 200, 170, 0.4);
+  color: #e8f5f1;
 }
 
 .side-card-btn {

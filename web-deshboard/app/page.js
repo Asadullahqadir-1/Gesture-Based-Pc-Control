@@ -51,9 +51,49 @@ const LANDMARK_NAMES = [
 
 const TIP_INDICES = [4, 8, 12, 16, 20];
 
-function classifyGesture(landmarks) {
+function detectPinchZoom(landmarks, previousPinchDistance = null) {
+  if (!landmarks || landmarks.length < 9) return { gesture: null, distance: null };
+  
+  const thumb = landmarks[4];
+  const index = landmarks[8];
+  const distance = distanceXY(thumb, index);
+  
+  if (previousPinchDistance === null) {
+    return { gesture: null, distance };
+  }
+  
+  // Pinch closed = zoom in
+  if (distance < previousPinchDistance - 0.03) {
+    return { gesture: "Zoom In", distance };
+  }
+  // Pinch open = zoom out
+  if (distance > previousPinchDistance + 0.03) {
+    return { gesture: "Zoom Out", distance };
+  }
+  
+  return { gesture: null, distance };
+}
+
+function detectSwipe(landmarks, previousLandmarks = null) {
+  if (!landmarks || landmarks.length < 9 || !previousLandmarks) {
+    return null;
+  }
+  
+  const wrist = landmarks[0];
+  const prevWrist = previousLandmarks[0];
+  const xDelta = wrist.x - prevWrist.x;
+  
+  // Threshold for swipe detection (adjust as needed)
+  if (Math.abs(xDelta) > 0.04) {
+    return xDelta < 0 ? "Swipe Left" : "Swipe Right";
+  }
+  
+  return null;
+}
+
+function classifyGesture(landmarks, previousPinchDistance = null, previousLandmarks = null) {
   if (!landmarks || landmarks.length !== 21) {
-    return DEFAULT_GESTURE;
+    return { gesture: DEFAULT_GESTURE, pinchDistance: null };
   }
 
   const wrist = landmarks[0];
@@ -61,6 +101,19 @@ function classifyGesture(landmarks) {
   const middle = landmarks[12];
   const ring = landmarks[16];
   const little = landmarks[20];
+  const thumb = landmarks[4];
+
+  // Check for pinch zoom first
+  const pinch = detectPinchZoom(landmarks, previousPinchDistance);
+  if (pinch.gesture) {
+    return { gesture: pinch.gesture, pinchDistance: pinch.distance };
+  }
+  
+  // Check for swipe
+  const swipe = detectSwipe(landmarks, previousLandmarks);
+  if (swipe) {
+    return { gesture: swipe, pinchDistance: pinch.distance };
+  }
 
   const fingersUp = [index, middle, ring, little].map((tip, i) => {
     const pipIndex = [6, 10, 14, 18][i];
@@ -68,15 +121,15 @@ function classifyGesture(landmarks) {
   });
 
   const count = fingersUp.filter(Boolean).length;
-  if (count >= 4) return "Open Palm";
-  if (count === 0) return "Fist";
-  if (fingersUp[0] && fingersUp[1] && !fingersUp[2] && !fingersUp[3]) return "Two Finger";
+  if (count >= 4) return { gesture: "Open Palm", pinchDistance: pinch.distance };
+  if (count === 0) return { gesture: "Fist", pinchDistance: pinch.distance };
+  if (fingersUp[0] && fingersUp[1] && !fingersUp[2] && !fingersUp[3]) return { gesture: "Two Finger", pinchDistance: pinch.distance };
   if (fingersUp[0] && !fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
-    if (index.x < wrist.x - 0.05) return "Point Left";
-    if (index.x > wrist.x + 0.05) return "Point Right";
-    return "Point";
+    if (index.x < wrist.x - 0.05) return { gesture: "Point Left", pinchDistance: pinch.distance };
+    if (index.x > wrist.x + 0.05) return { gesture: "Point Right", pinchDistance: pinch.distance };
+    return { gesture: "Point", pinchDistance: pinch.distance };
   }
-  return "None";
+  return { gesture: "None", pinchDistance: pinch.distance };
 }
 
 function clamp(value, min, max) {
@@ -128,13 +181,14 @@ function extractFeatureVector(landmarks) {
   };
 }
 
-function classifyWithFeatureEngineering(landmarks, handednessLabel = "") {
+function classifyWithFeatureEngineering(landmarks, handednessLabel = "", previousPinchDistance = null, previousLandmarks = null) {
   if (!landmarks || landmarks.length !== 21) {
     return {
       gesture: DEFAULT_GESTURE,
       confidence: 0,
       source: "feature-engineering",
       featureDim: 0,
+      pinchDistance: null,
     };
   }
 
@@ -145,10 +199,24 @@ function classifyWithFeatureEngineering(landmarks, handednessLabel = "") {
       confidence: 0,
       source: "feature-engineering",
       featureDim: 0,
+      pinchDistance: null,
     };
   }
 
-  const baseGesture = classifyGesture(landmarks);
+  const gestureResult = classifyGesture(landmarks, previousPinchDistance, previousLandmarks);
+  const baseGesture = gestureResult.gesture;
+  
+  // For zoom and swipe gestures, use high confidence
+  if (baseGesture === "Zoom In" || baseGesture === "Zoom Out" || baseGesture === "Swipe Left" || baseGesture === "Swipe Right") {
+    return {
+      gesture: baseGesture,
+      confidence: 0.9,
+      source: "feature-engineering",
+      featureDim: features.featureDim,
+      pinchDistance: gestureResult.pinchDistance,
+    };
+  }
+  
   const fingersUp = [8, 12, 16, 20].map((tipId, index) => {
     const pipId = [6, 10, 14, 18][index];
     return landmarks[tipId].y < landmarks[pipId].y;
@@ -180,6 +248,7 @@ function classifyWithFeatureEngineering(landmarks, handednessLabel = "") {
     confidence,
     source: "feature-engineering",
     featureDim: features.featureDim,
+    pinchDistance: gestureResult.pinchDistance,
   };
 }
 
@@ -469,6 +538,8 @@ export default function Page() {
   const handLandmarkerRef = useRef(null);
   const lastFrameTimeRef = useRef(0);
   const smoothingRef = useRef(createSmoothingState());
+  const previousLandmarksRef = useRef(null);
+  const previousPinchDistanceRef = useRef(null);
 
   const [running, setRunning] = useState(false);
   const [permissionOpen, setPermissionOpen] = useState(false);
@@ -617,7 +688,19 @@ export default function Page() {
       drawLandmarks(ctx, result, canvas.width, canvas.height);
     }
 
-    const classification = classifyWithFeatureEngineering(landmarks, handednessLabel);
+    const classification = classifyWithFeatureEngineering(
+      landmarks, 
+      handednessLabel, 
+      previousPinchDistanceRef.current,
+      previousLandmarksRef.current
+    );
+    
+    // Update refs for next frame
+    if (landmarks) {
+      previousLandmarksRef.current = landmarks;
+      previousPinchDistanceRef.current = classification.pinchDistance;
+    }
+    
     const smoothing = smoothGesture(
       smoothingRef.current,
       classification.gesture,
@@ -635,7 +718,11 @@ export default function Page() {
     setClassificationSource(classification.source);
     setHandsCount(result?.landmarks?.length ?? 0);
 
-    if (nextStableGesture === "Open Palm") setLastAction("Play/Pause (simulated)");
+    if (nextStableGesture === "Zoom In") setLastAction("Zoom In");
+    else if (nextStableGesture === "Zoom Out") setLastAction("Zoom Out");
+    else if (nextStableGesture === "Swipe Left") setLastAction("Swipe Left");
+    else if (nextStableGesture === "Swipe Right") setLastAction("Swipe Right");
+    else if (nextStableGesture === "Open Palm") setLastAction("Play/Pause (simulated)");
     else if (nextStableGesture === "Fist") setLastAction("Click (simulated)");
     else if (nextStableGesture === "Point Left") setLastAction("Back (simulated)");
     else if (nextStableGesture === "Point Right") setLastAction("Forward (simulated)");
