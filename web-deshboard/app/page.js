@@ -790,8 +790,11 @@ export default function Page() {
         </div>
 
         <div className="sidebar-grid">
-          {/* Removed Status, Gesture (Stable), Gesture (Raw), and Confidence from sidebar as they are already present above the live feed */}
-          {/* Removed sidebar metrics that are duplicated above the live feed, including Consensus, Jitter Index, Classifier, Hands, FPS, Features, Last Action, and Runtime Score as requested */}
+          <button className="card side-card side-card-btn" onClick={() => setActiveScreen("overview")}><span>Status</span><strong>{status}</strong></button>
+          <button className="card side-card side-card-btn" onClick={() => setActiveScreen("overview")}><span>Gesture</span><strong>{gesture}</strong></button>
+          <button className="card side-card side-card-btn" onClick={() => setActiveScreen("overview")}><span>Last Action</span><strong>{lastAction}</strong></button>
+          <button className="card side-card side-card-btn" onClick={() => setActiveScreen("live")}><span>Live Feed</span><strong>View</strong></button>
+
           {/* Removed Build, Smoothing Profile, and Active Module cards as requested */}
 
           <article
@@ -846,8 +849,21 @@ export default function Page() {
           {activeScreen === "overview" ? (
             <>
               <h3>System Overview</h3>
-              <p className="muted">Use the left feature cards or tabs above to switch screens on this page.</p>
-              <p className="muted">Current status: <strong>{status}</strong> | Gesture: <strong>{gesture}</strong> | Last action: <strong>{lastAction}</strong></p>
+              <p className="muted">Click Status, Gesture, or Last Action cards in the sidebar to view details.</p>
+              <div className="grid">
+                <article className="card">
+                  <span>Current Status</span>
+                  <strong>{status}</strong>
+                </article>
+                <article className="card">
+                  <span>Gesture Detected</span>
+                  <strong>{gesture}</strong>
+                </article>
+                <article className="card">
+                  <span>Last Action</span>
+                  <strong>{lastAction}</strong>
+                </article>
+              </div>
             </>
           ) : null}
 

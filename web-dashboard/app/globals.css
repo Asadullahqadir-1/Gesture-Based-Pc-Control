@@ -1,11 +1,11 @@
 :root {
-  --bg: #e8efe7;
-  --panel: #f7fbf6;
-  --ink: #152b23;
-  --muted: #5a7169;
-  --accent: #1d8f62;
-  --accent-dark: #146a48;
-  --line: #d3dfd7;
+  --bg: #1a1a1a;
+  --panel: #2a2a2a;
+  --ink: #f0f0f0;
+  --muted: #a0a0a0;
+  --accent: #00d084;
+  --accent-dark: #00a366;
+  --line: #3a3a3a;
 }
 
 * {
@@ -16,7 +16,7 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: radial-gradient(circle at 0% 0%, #f3f8f4, var(--bg) 45%);
+  background: #0f0f0f;
   color: var(--ink);
   font-family: "Segoe UI", "Trebuchet MS", sans-serif;
 }
@@ -28,8 +28,8 @@ body {
 }
 
 .sidebar {
-  background: linear-gradient(180deg, #1a5a4a, #0f3d34);
-  color: #f0f8f5;
+  background: linear-gradient(180deg, #1a1a1a, #0f0f0f);
+  color: #f0f0f0;
   padding: 28px 22px;
   display: flex;
   flex-direction: column;
@@ -54,8 +54,8 @@ body {
   display: inline-block;
   padding: 7px 10px;
   border-radius: 999px;
-  background: #285a48;
-  color: #d7fce8;
+  background: #333333;
+  color: #00d084;
   font-size: 0.78rem;
   font-weight: 700;
 }
@@ -72,9 +72,9 @@ body {
 }
 
 .side-card {
-  background: rgba(15, 61, 52, 0.6);
-  border: 1px solid rgba(100, 200, 170, 0.4);
-  color: #e8f5f1;
+  background: rgba(50, 50, 50, 0.8);
+  border: 1px solid rgba(0, 208, 132, 0.3);
+  color: #e8e8e8;
 }
 
 .side-card-btn {
@@ -90,11 +90,12 @@ body {
 }
 
 .side-card span {
-  color: #c1ddd0;
+  color: #a0a0a0;
 }
 
 .side-card strong {
   font-size: 1.05rem;
+  color: #00d084;
 }
 
 .side-card.control-card label {
@@ -118,8 +119,8 @@ body {
 
 .screen-tab {
   border: 1px solid var(--line);
-  background: #e8f1ec;
-  color: #1f4337;
+  background: #333333;
+  color: #a0a0a0;
   border-radius: 999px;
   padding: 8px 14px;
   font-weight: 700;
@@ -148,7 +149,7 @@ body {
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 10px;
-  background: #f5faf7;
+  background: #2a2a2a;
 }
 
 .metric-head {
@@ -164,21 +165,21 @@ body {
 }
 
 .metric-head strong {
-  color: #10392c;
+  color: #00d084;
 }
 
 .metric-track {
   margin-top: 8px;
   height: 8px;
   border-radius: 999px;
-  background: #dce9e1;
+  background: #444444;
   overflow: hidden;
 }
 
 .metric-fill {
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #2c9a6f, #69d6ab);
+  background: linear-gradient(90deg, #00a366, #00d084);
 }
 
 .module-diagnostics-grid {
@@ -193,7 +194,7 @@ body {
   border: 1px dashed var(--line);
   border-radius: 10px;
   padding: 10px;
-  background: #f8fcf9;
+  background: #2a2a2a;
 }
 
 .topbar {
@@ -215,8 +216,8 @@ body {
 
 .btn {
   border: 1px solid var(--line);
-  background: #ecf3ef;
-  color: #27463b;
+  background: #333333;
+  color: #f0f0f0;
   padding: 10px 16px;
   border-radius: 10px;
   font-weight: 700;
@@ -321,8 +322,8 @@ body {
 
 .modal {
   width: min(480px, 100%);
-  background: #f8fcf8;
-  border: 1px solid #cfddd3;
+  background: #2a2a2a;
+  border: 1px solid #3a3a3a;
   border-radius: 14px;
   padding: 18px;
 }
