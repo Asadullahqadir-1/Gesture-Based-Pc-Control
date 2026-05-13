@@ -715,19 +715,7 @@ export default function Page() {
           <button className="card side-card side-card-btn" onClick={() => setActiveScreen("metrics")}><span>Classifier</span><strong>{classificationSource}</strong></button>
           <button className="card side-card side-card-btn" onClick={() => setActiveScreen("metrics")}><span>Last Action</span><strong>{lastAction}</strong></button>
           <button className="card side-card side-card-btn" onClick={() => setActiveScreen("metrics")}><span>Runtime Score</span><strong>{score}%</strong></button>
-          <button className="card side-card side-card-btn" onClick={() => setActiveScreen("modules")}><span>Build</span><strong>{MODULE_BUILD}</strong></button>
-          <button className="card side-card side-card-btn" onClick={() => setActiveScreen("modules")}><span>Smoothing Profile</span><strong>{SMOOTH_PROFILE}</strong></button>
-
-          {ACTIVE_MODULES.map((moduleName) => (
-            <button
-              className="card side-card side-card-btn"
-              key={moduleName}
-              onClick={() => setActiveScreen(moduleName)}
-            >
-              <span>Active Module</span>
-              <strong>{moduleName}</strong>
-            </button>
-          ))}
+          {/* Removed Build, Smoothing Profile, and Active Module cards as requested */}
 
           <article
             className="card side-card control-card"
