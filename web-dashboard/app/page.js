@@ -707,14 +707,7 @@ export default function Page() {
           <button className="card side-card side-card-btn" onClick={() => setActiveScreen("metrics")}><span>Gesture (Stable)</span><strong>{gesture}</strong></button>
           <button className="card side-card side-card-btn" onClick={() => setActiveScreen("metrics")}><span>Gesture (Raw)</span><strong>{rawGesture}</strong></button>
           <button className="card side-card side-card-btn" onClick={() => setActiveScreen("metrics")}><span>Confidence</span><strong>{(rawConfidence * 100).toFixed(0)}%</strong></button>
-          <button className="card side-card side-card-btn" onClick={() => setActiveScreen("metrics")}><span>Consensus</span><strong>{(consensusRatio * 100).toFixed(0)}%</strong></button>
-          <button className="card side-card side-card-btn" onClick={() => setActiveScreen("metrics")}><span>Jitter Index</span><strong>{jitterIndex.toFixed(2)}</strong></button>
-          <button className="card side-card side-card-btn" onClick={() => setActiveScreen("metrics")}><span>Hands</span><strong>{handsCount}</strong></button>
-          <button className="card side-card side-card-btn" onClick={() => setActiveScreen("metrics")}><span>FPS</span><strong>{fps.toFixed(1)}</strong></button>
-          <button className="card side-card side-card-btn" onClick={() => setActiveScreen("metrics")}><span>Features</span><strong>{featureDim}</strong></button>
-          <button className="card side-card side-card-btn" onClick={() => setActiveScreen("metrics")}><span>Classifier</span><strong>{classificationSource}</strong></button>
-          <button className="card side-card side-card-btn" onClick={() => setActiveScreen("metrics")}><span>Last Action</span><strong>{lastAction}</strong></button>
-          <button className="card side-card side-card-btn" onClick={() => setActiveScreen("metrics")}><span>Runtime Score</span><strong>{score}%</strong></button>
+          {/* Removed sidebar metrics that are duplicated above the live feed, including Consensus, Jitter Index, Classifier, Hands, FPS, Features, Last Action, and Runtime Score as requested */}
           {/* Removed Build, Smoothing Profile, and Active Module cards as requested */}
 
           <article
