@@ -841,26 +841,7 @@ export default function Page() {
 
       <section className="content">
         <article className="card screen-panel">
-          {activeScreen === "overview" ? (
-            <>
-              <h3>System Overview</h3>
-              <p className="muted">Click Status, Gesture, or Last Action cards in the sidebar to view details.</p>
-              <div className="grid">
-                <article className="card">
-                  <span>Current Status</span>
-                  <strong>{status}</strong>
-                </article>
-                <article className="card">
-                  <span>Gesture Detected</span>
-                  <strong>{gesture}</strong>
-                </article>
-                <article className="card">
-                  <span>Last Action</span>
-                  <strong>{lastAction}</strong>
-                </article>
-              </div>
-            </>
-          ) : null}
+          {activeScreen === "overview" ? null : null}
 
           {activeScreen === "metrics" ? (
             <>
