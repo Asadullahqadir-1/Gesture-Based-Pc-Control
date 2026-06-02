@@ -14,16 +14,25 @@ export function middleware(request) {
   if (!token && pathname !== '/login') {
     const url = nextUrl.clone();
     url.pathname = '/login';
-    return NextResponse.redirect(url);
+    const res = NextResponse.redirect(url);
+    res.headers.set('x-middleware-active', '1');
+    res.headers.set('x-middleware-reason', 'no-token');
+    return res;
   }
 
   if (token && pathname === '/login') {
     const url = nextUrl.clone();
     url.pathname = '/';
-    return NextResponse.redirect(url);
+    const res = NextResponse.redirect(url);
+    res.headers.set('x-middleware-active', '1');
+    res.headers.set('x-middleware-reason', 'already-authenticated');
+    return res;
   }
 
-  return NextResponse.next();
+  const res = NextResponse.next();
+  res.headers.set('x-middleware-active', '1');
+  res.headers.set('x-middleware-reason', token ? 'ok' : 'no-token-but-allowed');
+  return res;
 }
 
 export const config = {
