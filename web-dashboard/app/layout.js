@@ -1,5 +1,6 @@
 import "./globals.css";
 import Header from "./Header";
+import AuthGuard from "./AuthGuard";
 
 export const metadata = {
   title: "DriveFlow",
@@ -10,6 +11,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
+        <AuthGuard />
         <Header />
         {children}
       </body>
