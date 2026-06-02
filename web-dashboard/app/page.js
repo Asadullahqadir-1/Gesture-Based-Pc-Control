@@ -560,16 +560,25 @@ export default function Page() {
   const [error, setError] = useState("");
   const [activeScreen, setActiveScreen] = useState("overview");
   const [user, setUser] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     try {
       const raw = localStorage.getItem("df_user");
-      if (raw) setUser(JSON.parse(raw));
+      if (raw) {
+        setUser(JSON.parse(raw));
+        setAuthChecked(true);
+      } else {
+        setAuthChecked(true);
+        router.replace("/login");
+      }
     } catch (e) {
       setUser(null);
+      setAuthChecked(true);
+      router.replace("/login");
     }
-  }, []);
+  }, [router]);
 
   const score = useMemo(() => {
     let s = 40;
@@ -804,6 +813,10 @@ export default function Page() {
       setError(e instanceof Error ? e.message : "Could not start camera.");
       stopApp();
     }
+  }
+
+  if (!authChecked) {
+    return null;
   }
 
   return (
