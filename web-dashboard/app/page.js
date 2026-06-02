@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { FilesetResolver, HandLandmarker } from "@mediapipe/tasks-vision";
 
 const DEFAULT_GESTURE = "No hand";
@@ -558,6 +559,17 @@ export default function Page() {
   const [lastAction, setLastAction] = useState("Waiting");
   const [error, setError] = useState("");
   const [activeScreen, setActiveScreen] = useState("overview");
+  const [user, setUser] = useState(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("df_user");
+      if (raw) setUser(JSON.parse(raw));
+    } catch (e) {
+      setUser(null);
+    }
+  }, []);
 
   const score = useMemo(() => {
     let s = 40;
@@ -660,6 +672,22 @@ export default function Page() {
     }
   }
 
+  function ensureAuthenticated() {
+    try {
+      const raw = localStorage.getItem("df_user");
+      if (!raw) {
+        setError("Please log in before using the app.");
+        router.push("/login");
+        return false;
+      }
+      return true;
+    } catch (e) {
+      setError("Please log in before using the app.");
+      router.push("/login");
+      return false;
+    }
+  }
+
   function runLoop() {
     const video = videoRef.current;
     const canvas = overlayRef.current;
@@ -734,6 +762,10 @@ export default function Page() {
   async function startAppWithPermissions() {
     setError("");
 
+    if (!ensureAuthenticated()) {
+      return;
+    }
+
     if (!cameraAllowed) {
       setError("Camera permission is required to run the app.");
       return;
@@ -781,12 +813,20 @@ export default function Page() {
         <div className="chip">{running ? "APP RUNNING" : "APP STOPPED"}</div>
 
         <div className="sidebar-actions">
-          <button className="btn primary" onClick={() => setPermissionOpen(true)}>
+          <button className="btn primary" onClick={() => {
+            if (!ensureAuthenticated()) return;
+            setPermissionOpen(true);
+          }}>
             Run App
           </button>
           <button className="btn" onClick={stopApp}>
             Stop App
           </button>
+          {!user && (
+            <button className="btn secondary" onClick={() => router.push("/login") }>
+              Go to Login
+            </button>
+          )}
         </div>
 
         <div className="sidebar-grid">
