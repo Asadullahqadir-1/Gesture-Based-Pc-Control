@@ -16,6 +16,10 @@ export default function LoginPage() {
     setError("");
     if (username === DUMMY_USER.username && password === DUMMY_USER.password) {
       localStorage.setItem("df_user", JSON.stringify({ username }));
+      // set a simple auth cookie so middleware can detect authentication before hydration
+      try {
+        document.cookie = "df_auth=1; Path=/; Max-Age=3600; SameSite=Lax";
+      } catch (e) {}
       router.push("/");
     } else {
       setError("Invalid credentials. Try username: admin / password: password");

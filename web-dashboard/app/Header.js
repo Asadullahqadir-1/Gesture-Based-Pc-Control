@@ -19,6 +19,8 @@ export default function Header() {
 
   function logout() {
     localStorage.removeItem("df_user");
+    // remove auth cookie
+    try { document.cookie = "df_auth=; Path=/; Max-Age=0; SameSite=Lax"; } catch(e) {}
     setUser(null);
     router.push("/login");
   }
