@@ -17,7 +17,9 @@ export default function LoginPage() {
     if (username === DUMMY_USER.username && password === DUMMY_USER.password) {
       localStorage.setItem("df_user", JSON.stringify({ username }));
       try {
-        document.cookie = "df_auth=1; Path=/; Max-Age=3600; SameSite=Lax";
+        // Clear old cookie and set new cookie name to force fresh logins
+        document.cookie = "df_auth=; Path=/; Max-Age=0; SameSite=Lax";
+        document.cookie = "df_auth_v2=1; Path=/; Max-Age=3600; SameSite=Lax";
       } catch (e) {
         console.error(e);
       }
