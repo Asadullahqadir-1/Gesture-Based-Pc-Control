@@ -1,10 +1,11 @@
 import time
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import cv2
 from PIL import Image, ImageTk
+import auth
 
 
 class DashboardUI:
@@ -51,15 +52,20 @@ class DashboardUI:
         self.root.bind("<q>", lambda _event: self.stop())
         self.root.bind("<Q>", lambda _event: self.stop())
 
-        self.show_consent_view()
+        # Start with login view; after successful login the consent view is shown
+        self.show_login_view()
+
+        self._auth = auth.AuthManager()
 
     def _build_layout(self) -> None:
         self.container = ttk.Frame(self.root, padding=16)
         self.container.pack(fill=tk.BOTH, expand=True)
 
+        self.login_frame = ttk.Frame(self.container)
         self.consent_frame = ttk.Frame(self.container)
         self.dashboard_frame = ttk.Frame(self.container)
 
+        self._build_login_frame()
         self._build_consent_frame()
         self._build_dashboard_frame()
 
@@ -111,6 +117,44 @@ class DashboardUI:
 
         self.start_button = ttk.Button(self.consent_frame, text="Grant Access and Start", command=self._on_start_clicked)
         self.start_button.pack(anchor=tk.W)
+
+    def _build_login_frame(self) -> None:
+        header = ttk.Label(
+            self.login_frame,
+            text="Sign in to Gesture PC Control",
+            font=("Segoe UI", 18, "bold"),
+        )
+        header.pack(anchor=tk.W, pady=(0, 10))
+
+        desc = ttk.Label(
+            self.login_frame,
+            text=("Please sign in with your username and password to continue."),
+            wraplength=self.width,
+            font=("Segoe UI", 11),
+        )
+        desc.pack(anchor=tk.W, pady=(0, 8))
+
+        form = ttk.Frame(self.login_frame)
+        form.pack(fill=tk.X, pady=(8, 12))
+
+        ttk.Label(form, text="Username:").grid(row=0, column=0, sticky=tk.W, pady=4)
+        self._username_entry = ttk.Entry(form)
+        self._username_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(8, 0))
+
+        ttk.Label(form, text="Password:").grid(row=1, column=0, sticky=tk.W, pady=4)
+        self._password_entry = ttk.Entry(form, show="*")
+        self._password_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(8, 0))
+
+        form.columnconfigure(1, weight=1)
+
+        btn_row = ttk.Frame(self.login_frame)
+        btn_row.pack(anchor=tk.W)
+
+        self._login_button = ttk.Button(btn_row, text="Sign In", command=self._on_login_clicked)
+        self._login_button.pack(side=tk.LEFT)
+
+        self._login_hint = ttk.Label(self.login_frame, text="No users file: default credentials are admin/admin", foreground="#666666", font=("Segoe UI", 9))
+        self._login_hint.pack(anchor=tk.W, pady=(8, 0))
 
     def _build_dashboard_frame(self) -> None:
         self.video_label = ttk.Label(self.dashboard_frame)
@@ -175,7 +219,13 @@ class DashboardUI:
     def show_consent_view(self) -> None:
         self._dashboard_ready = False
         self.dashboard_frame.pack_forget()
+        self.login_frame.pack_forget()
         self.consent_frame.pack(fill=tk.BOTH, expand=True)
+
+    def show_login_view(self) -> None:
+        self.dashboard_frame.pack_forget()
+        self.consent_frame.pack_forget()
+        self.login_frame.pack(fill=tk.BOTH, expand=True)
 
     def show_dashboard_view(self) -> None:
         self.consent_frame.pack_forget()
@@ -249,6 +299,26 @@ class DashboardUI:
             self.show_dashboard_view()
         else:
             self.permission_hint.configure(text="Camera could not be opened. Close other apps and try again.", foreground="#a94442")
+
+    def _on_login_clicked(self) -> None:
+        username = self._username_entry.get().strip()
+        password = self._password_entry.get()
+        if not username or not password:
+            messagebox.showwarning("Sign in", "Please enter username and password.")
+            return
+
+        try:
+            ok = self._auth.verify(username, password)
+        except Exception:
+            ok = False
+
+        if ok:
+            # clear fields and proceed to consent
+            self._username_entry.delete(0, tk.END)
+            self._password_entry.delete(0, tk.END)
+            self.show_consent_view()
+        else:
+            messagebox.showerror("Sign in failed", "Invalid username or password.")
 
     def _toggle_controls(self) -> None:
         self._controls_enabled = not self._controls_enabled
