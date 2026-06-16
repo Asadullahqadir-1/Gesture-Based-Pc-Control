@@ -511,7 +511,7 @@ export default function HomePage() {
 
   return (
     <main style={{ padding: 16 }}>
-      <h1>DriveFlow Web Dashboard</h1>
+      <h1>AI Gesture Control Dashboard</h1>
       <p>App status: {status}</p>
       <p>Gesture: {gesture}</p>
       <p>Confidence: {confidence.toFixed(2)}</p>
