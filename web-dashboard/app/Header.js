@@ -19,8 +19,13 @@ export default function Header() {
 
   function logout() {
     localStorage.removeItem("df_user");
-    // remove auth cookie
-    try { document.cookie = "df_auth=; Path=/; Max-Age=0; SameSite=Lax"; } catch(e) {}
+    localStorage.removeItem("df_auth_exp");
+    // remove auth cookies
+    try {
+      document.cookie = "df_auth=; Path=/; Max-Age=0; SameSite=Lax";
+      document.cookie = "df_auth_v2=; Path=/; Max-Age=0; SameSite=Lax";
+      document.cookie = "df_auth_v3=; Path=/; Max-Age=0; SameSite=Lax";
+    } catch(e) {}
     setUser(null);
     router.push("/login");
   }

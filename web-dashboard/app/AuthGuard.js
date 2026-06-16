@@ -19,7 +19,7 @@ export default function AuthGuard() {
         return v ? v.pop() : null;
       }
 
-      const token = getCookie("df_auth_v2");
+      const token = getCookie("df_auth_v3");
       const expRaw = localStorage.getItem("df_auth_exp");
       const exp = expRaw ? Number(expRaw) : null;
       const valid = token && (!exp || exp > Date.now());

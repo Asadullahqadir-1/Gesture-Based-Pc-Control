@@ -20,9 +20,10 @@ export default function LoginPage() {
       try {
         // Clear old cookie
         document.cookie = "df_auth=; Path=/; Max-Age=0; SameSite=Lax";
+        document.cookie = "df_auth_v2=; Path=/; Max-Age=0; SameSite=Lax";
         // Set session duration: 1 hour default, 7 days if remember-me
         const maxAge = remember ? 60 * 60 * 24 * 7 : 60 * 60;
-        document.cookie = `df_auth_v2=1; Path=/; Max-Age=${maxAge}; SameSite=Lax`;
+        document.cookie = `df_auth_v3=1; Path=/; Max-Age=${maxAge}; SameSite=Lax`;
         // Store expiry timestamp for client-side checks
         const expiry = Date.now() + maxAge * 1000;
         localStorage.setItem("df_auth_exp", String(expiry));

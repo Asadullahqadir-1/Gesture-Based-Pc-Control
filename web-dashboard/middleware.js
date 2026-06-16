@@ -11,7 +11,7 @@ export function middleware(request) {
 
   // Use a new cookie name to force re-login for all users.
   // Existing `df_auth` cookies will no longer grant access.
-  const token = cookies.get('df_auth_v2')?.value;
+  const token = cookies.get('df_auth_v3')?.value;
 
   if (!token && pathname !== '/login') {
     const url = nextUrl.clone();

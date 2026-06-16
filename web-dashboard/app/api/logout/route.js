@@ -5,5 +5,6 @@ export function GET() {
   // Clear auth cookies
   res.cookies.set('df_auth', '', { path: '/', maxAge: 0 });
   res.cookies.set('df_auth_v2', '', { path: '/', maxAge: 0 });
+  res.cookies.set('df_auth_v3', '', { path: '/', maxAge: 0 });
   return res;
 }
