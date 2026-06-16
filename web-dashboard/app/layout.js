@@ -3,8 +3,8 @@ import Header from "./Header";
 import AuthGuard from "./AuthGuard";
 
 export const metadata = {
-  title: "DriveFlow",
-  description: "Web-based gesture dashboard ready for Vercel deployment",
+  title: "AI Gesture Control - Gesture Based PC Control System",
+  description: "AI Driven Gesture Based PC Control System - Web-based gesture dashboard ready for Vercel deployment",
 };
 
 export default function RootLayout({ children }) {
