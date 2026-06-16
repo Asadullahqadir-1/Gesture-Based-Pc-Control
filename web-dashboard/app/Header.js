@@ -27,8 +27,9 @@ export default function Header() {
 
   return (
     <header style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 20px', borderBottom:'1px solid #eee'}}>
-      <div style={{fontWeight:700}}>AI Driven Gesture Based PC Control System</div>
-      <nav>
+      <div style={{width:160}} />
+      <div style={{flex:1, textAlign:'center', fontWeight:700}}>AI Driven Gesture Based PC Control System</div>
+      <nav style={{minWidth:160}}>
         {user ? (
           <div style={{display:'flex', gap:12, alignItems:'center'}}>
             <span style={{color:'#333'}}>Hello, {user.username}</span>
