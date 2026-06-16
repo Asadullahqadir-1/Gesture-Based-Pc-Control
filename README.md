@@ -1,6 +1,6 @@
-# Hand Gesture Recognition AI
+# AI Driven Gesture Based PC Control System
 
-A comprehensive hand gesture recognition system with two approaches: **MediaPipe-based** (pre-trained) and **CNN-based** (custom training). Optimized for both local development and Raspberry Pi deployment.
+A comprehensive AI-driven gesture recognition system with two approaches: **MediaPipe-based** (pre-trained) and **CNN-based** (custom training). Optimized for PC control, local development, and Raspberry Pi deployment.
 
 ## 🎯 Features
 

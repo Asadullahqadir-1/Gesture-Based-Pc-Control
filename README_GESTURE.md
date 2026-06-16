@@ -1,6 +1,6 @@
-# Hand Gesture Recognition System
+# AI Driven Gesture Based PC Control System
 
-A lightweight hand gesture recognition system optimized for Raspberry Pi 5, using OpenCV and TensorFlow Lite.
+A lightweight AI-driven gesture recognition system optimized for Raspberry Pi 5 and PC control, using OpenCV and TensorFlow Lite.
 
 ## Features
 

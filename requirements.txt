@@ -1,4 +1,4 @@
-# Hand Gesture Recognition - Requirements
+# AI Driven Gesture Based PC Control System - Requirements
 # Optimized for Raspberry Pi 5
 
 # Core dependencies

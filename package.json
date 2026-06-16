@@ -1,5 +1,5 @@
 {
-  "name": "gesture-based-pc-control-monorepo",
+  "name": "ai-driven-gesture-based-pc-control",
   "private": true,
   "scripts": {
     "dev": "npm run dev --prefix web-dashboard",

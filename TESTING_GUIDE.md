@@ -1,4 +1,4 @@
-# Testing Guide - Hand Gesture Recognition
+# Testing Guide - AI Driven Gesture Based PC Control System
 
 ## ✅ **CURRENT STATUS (Python 3.13)**
 
