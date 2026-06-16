@@ -25,6 +25,16 @@ export default function Header() {
     router.push("/login");
   }
 
+  // also expose a helper to clear both session cookies/localStorage (used elsewhere)
+  function clearSession() {
+    try {
+      document.cookie = "df_auth=; Path=/; Max-Age=0; SameSite=Lax";
+      document.cookie = "df_auth_v2=; Path=/; Max-Age=0; SameSite=Lax";
+    } catch (e) {}
+    localStorage.removeItem("df_user");
+    localStorage.removeItem("df_auth_exp");
+  }
+
   return (
     <header style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 20px', borderBottom:'1px solid #eee'}}>
       <div style={{width:160}} />
