@@ -777,7 +777,6 @@ export default function Page() {
   return (
     <main className="page">
       <aside className="sidebar">
-        <h1>AI Driven Gesture Based PC Control System</h1>
         <div className="chip">{running ? "APP RUNNING" : "APP STOPPED"}</div>
 
         <div className="sidebar-actions">
@@ -840,6 +839,9 @@ export default function Page() {
       </aside>
 
       <section className="content">
+        <div className="topbar">
+          <h2>AI Driven Gesture Based PC Control System</h2>
+        </div>
         <article className="card screen-panel">
           {activeScreen === "overview" ? null : null}
 
