@@ -1,7 +1,7 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "AI Gesture Control - Gesture Based PC Control System",
+  title: "AI Driven Gesture Based PC Control System",
   description: "Web-based gesture dashboard ready for Vercel deployment",
 };
 

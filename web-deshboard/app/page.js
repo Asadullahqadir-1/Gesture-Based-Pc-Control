@@ -777,7 +777,7 @@ export default function Page() {
   return (
     <main className="page">
       <aside className="sidebar">
-        <h1>AI Gesture Control</h1>
+        <h1>AI Driven Gesture Based PC Control System</h1>
         <div className="chip">{running ? "APP RUNNING" : "APP STOPPED"}</div>
 
         <div className="sidebar-actions">

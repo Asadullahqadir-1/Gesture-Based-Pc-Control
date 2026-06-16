@@ -27,7 +27,7 @@ export default function Header() {
 
   return (
     <header style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 20px', borderBottom:'1px solid #eee'}}>
-      <div style={{fontWeight:700}}>AI Gesture Control</div>
+      <div style={{fontWeight:700}}>AI Driven Gesture Based PC Control System</div>
       <nav>
         {user ? (
           <div style={{display:'flex', gap:12, alignItems:'center'}}>
